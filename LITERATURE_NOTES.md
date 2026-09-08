@@ -55,6 +55,14 @@
   https://www.kci.go.kr/kciportal/ci/sereArticleSearch/ciSereArtiView.kci?sereArticleSearchBean.artiId=ART002398353
   메모: 검색량 기반 예측의 국내 선례. 방법론 인용 가능.
 
+- **"네이버 데이터랩 검색어 트렌드 서비스를 이용한 온라인 포털에서의 한약재 검색 트렌드와 의미에 대한 고찰"** ⭐
+  https://scienceon.kisti.re.kr/srch/selectPORSrchArticle.do?cn=JAKO202128054459762&dbt=NART
+  메모: **지금까지 찾은 것 중 방법론적으로 가장 직접적인 선례** — 우리가 쓰는 것과 똑같은 네이버 데이터랩 검색어트렌드 API를, 한약재라는 다른 도메인 키워드(606개)에 적용해 2020.1~2021.6 검색 트렌드를 분석함. Ⅲ장 방법론 정당화에 핵심적으로 인용할 만함.
+
+- **Enhancing Cosmetic Supply Chain Efficiency Through Demand Forecasting Using Machine Learning** (Springer, 2024)
+  https://link.springer.com/chapter/10.1007/978-3-031-75923-9_13
+  메모: 화장품 실제 데이터로 여러 머신러닝 수요예측 알고리즘의 적용가능성·효과성을 비교한 논문. 화장품+ML 예측을 직접 다룬 해외 논문이라 인용 가치 높음.
+
 ## 2.3 국내 뷰티 이커머스 데이터 활용
 
 - **"텍스트 마이닝 기법을 활용한 고객 리뷰 감성분석 : 올리브영 기초 화장품 리뷰 빅데이터 중심으로"**
