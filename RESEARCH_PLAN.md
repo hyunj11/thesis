@@ -38,8 +38,30 @@
 - **실무 검증(보조)용 스냅샷**: 올리브영 랭킹 + 상품별 전성분 데이터
   - 목적: 모델이 예측한 트렌드 키워드가 실제 인기제품에 얼마나 반영되고 있는지 사례로 제시 (본 모델의 핵심 데이터는 아니고 보조 검증 역할)
 
-### 2) Breakout 라벨링 기준
-- 검색량이 과거 대비 상대적 기준(예: 이전 6개월 평균 대비 200% 이상 등)으로 급증했는지 여부로 정의
+### 2) Breakout 라벨링 기준 — Tukey's IQR 이상치 탐지법 (2026-09-09 확정)
+- ~~(기각) 이전 6개월 평균 대비 200% 증가~~ → 임의 임계치라 근거 부족으로 기각.
+- ~~(기각) Google Trends 공식 breakout 정의(검색량 5,000%+ 증가)~~ → 네이버 트렌드는 이미 0~100 정규화된 상대값이라 절대 검색량 기반인 구글 기준을 그대로 적용할 근거 없음.
+- **최종 채택**: 키워드별 전월 대비 증가율(growth_rate = pct_change)을 계산 → **카테고리(성분/컨셉/제형/효능)별로 그룹화**하여 Q3 + 1.5×IQR을 초과하는 시점을 breakout으로 라벨링.
+  - 카테고리별로 그룹화하는 이유: RQ2(카테고리 간 변동성 비교) 설계상 "이례적 급등"의 기준선 자체가 카테고리마다 다를 수 있음을 반영.
+  - 근거: (1) 통계학에서 널리 검증된 표준 이상치 탐지법, (2) 데이터 분포에 따라 자동으로 임계치가 조정되는 적응형(adaptive) 기준이라 임의성 논란을 줄임, (3) 증가율(differenced) 기반이라 원 수준값(level) 시계열의 가성회귀(spurious regression, Yule 1926) 위험을 우회하는 효과도 있음 — 두 비정상 시계열이 우연히 유사한 추세를 보여도 실제로는 무관할 수 있다는 문제(문태남 2017, VECM 건설비지수 논문에서 실증: CCI와 무관한 'Samsung Group' 검색어도 상관계수 0.93)를 완화.
+  - 동일한 IQR 이상치 탐지 공식이 국내 유사 연구(김병완 2021, 포털 검색량 기반 중고차 가격예측 석사논문)에서도 실제 채택된 선례 확보.
+- SPSS Explore 절차 또는 Python(pandas groupby+quantile)으로 구현 가능:
+```python
+import pandas as pd
+df = pd.read_csv("naver_trend_data.csv")
+df = df.sort_values(["keyword", "period"])
+df["growth_rate"] = df.groupby("keyword")["ratio"].pct_change() * 100
+def flag_outlier(group):
+    q1 = group["growth_rate"].quantile(0.25)
+    q3 = group["growth_rate"].quantile(0.75)
+    iqr = q3 - q1
+    threshold = q3 + 1.5 * iqr
+    group["breakout_threshold"] = threshold
+    group["is_breakout"] = group["growth_rate"] > threshold
+    return group
+df = df.groupby("category", group_keys=False).apply(flag_outlier)
+df.to_csv("naver_trend_labeled.csv", index=False, encoding="utf-8-sig")
+```
 - 절대 검색량이 아닌 상대적 증가율 기준 → 원래 유명한 키워드와 신생 키워드 간 공정성 확보
 
 ### 3) Feature 설계 (라벨링 시점 T 이전 데이터만 사용, 미래 정보 누수 방지)
@@ -82,6 +104,13 @@
 - **Ⅴ. 결론**
   - 요약 및 시사점, 한계점(크롤링 제약 등), 향후 연구 방향
 - 참고문헌
+
+## 진행 상황 (선행연구 검토, 2026-09-10 기준)
+- 지도교수 피드백: "관련 석사논문 최대한 많이 찾아 차용할 것은 차용하고, 한계점을 파악해 해결 방법을 고민하라"는 방향으로 선행연구 검토를 최우선 진행 중.
+- 총 13편(학술논문 7편 + 석/박사 학위논문 6편) 원문 확인 완료. 상세 내용은 LITERATURE_NOTES.md 참고.
+- **가장 근접한 방법론 선례**: 김병완(2021, 연세대 석사) "포털 검색량 데이터를 활용한 중고차 가격 예측" — 내부변수만 쓰는 베이스라인 모형과 네이버 트렌드 검색량을 추가한 모형을 RMSE로 비교하는 ablation 설계, IQR 이상치 제거, GridSearchCV+CV 기반 6개 알고리즘 비교. 우리 모델 검증 설계(4장)에 이 ablation 프레임 차용 검토 중.
+- 문태남(2017, 인하대 석사) VECM 건설비지수 논문에서 "경제지표 공시지연(publication lag)" 문제와 "가성회귀(spurious regression)" 개념을 확인 — 각각 서론의 문제제기, Tukey IQR(증가율 기반) 라벨링 선택 근거로 활용.
+- 남은 과제: "패션 브랜드 ARDL 검색량-매출" 논문(90p)과 "패션 브랜드 웹평가 트렌드" 논문(138p) 미검토 — 다음 세션 우선순위.
 
 ## 진행 상황 (데이터 수집)
 - 올리브영 랭킹 페이지에서 상위 100개 상품 목록 확보 완료 (`ranking_products.csv`)
