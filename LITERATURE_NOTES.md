@@ -201,40 +201,43 @@
 
 ---
 
-## ⚠️ 2026-09-14 재점검: "breakout 이진분류라는 문제 설정 자체는 새롭지 않음" — 해외 문헌 확인
+## ⚠️ 2026-09-14 재점검 → 2026-09-15 원문 확정: "breakout 이진분류라는 문제 설정 자체는 새롭지 않음" — 해외 문헌 확인
 
-**계기**: "개별 키워드의 breakout 여부를 예측하는 문제 설정 자체, 카테고리 간 예측가능성 비교"를 다룬 연구가 "단 하나도 없다"는 주장은 사용자가 업로드한 13편(국내 화장품/뷰티 도메인 학위논문 중심)에 한정된 스크리닝 결과였고, 전세계 학술DB 전체를 훑은 게 아니었음. 사용자 지적에 따라 웹검색으로 재점검(원문 사이트는 이 세션 네트워크 정책상 접근 차단되어 검색 스니펫으로만 확인, 원문 대조는 사용자가 RISS/Google Scholar 등에서 추가 확인 필요).
+**계기**: "개별 키워드의 breakout 여부를 예측하는 문제 설정 자체, 카테고리 간 예측가능성 비교"를 다룬 연구가 "단 하나도 없다"는 주장은 사용자가 업로드한 13편(국내 화장품/뷰티 도메인 학위논문 중심)에 한정된 스크리닝 결과였고, 전세계 학술DB 전체를 훑은 게 아니었음. 사용자가 웹검색 스니펫으로 1차 확인한 뒤(09-14), **사용자가 직접 원문 3편(PDF)을 구해 업로드**해 원문 전체를 정독함(09-15). 아래는 원문 기준으로 확정된 내용이며, 09-14 스니펫 기준 요약과 다른 부분(특히 Ansary 논문의 수치)은 이번에 정정됨. **Devi & Geetha "Trendingtags" 논문은 사용자가 접근하지 못해 여전히 스니펫 수준으로만 파악된 상태.**
 
-**핵심 확인 사항**: "개별 항목의 breakout/바이럴 여부를 이진분류로 예측"하는 문제 설정 자체는 데이터마이닝/소셜미디어 분석 분야에서 **이미 확립된 연구 흐름**임. 아래 4편이 대표적 선례:
+**Ma, Sun & Cong (2013), "On Predicting the Popularity of Newly Emerging Hashtags in Twitter", JASIST 64(7)** — 원문 정독 완료
+- 신규 해시태그의 "인기 범위(popularity range)"를 **5단계 다중분류**(not popular / marginally popular / popular / very popular / extremely popular) 문제로 정식화. 범위는 사용자 수 Φ를 기준으로 지수적으로 증가하는 구간([0,φ], [φ,2φ], [2φ,4φ], [4φ,8φ], [8φ,∞), φ=25)으로 정의 — φ 값 자체는 저자도 "데이터셋 기준의 주관적 설정(subjective setting)"이라고 인정함(우리가 임의 임계치를 기각하고 IQR을 택한 것과 같은 문제의식).
+- Content feature 7개(해시태그 문자열의 숫자 포함 여부, 세그먼트 단어 수, URL 비율, 감성벡터, 토픽벡터, 해시태그 clarity, 세그먼트단어 clarity)와 Contextual feature 11개(유저 수, 트윗 수, 답글/리트윗 비율, 평균 authority, triangle fraction, graph density, component ratio, average edge strength, border user count, exposure vector)를 정의(총 53차원, Table 1).
+- NB/kNN/Decision Tree(C4.5)/SVM/로지스틱회귀 5개 분류기 + Random/Lazy/PriorDist 3개 베이스라인 비교, 10-fold 교차검증. **로지스틱회귀가 all-feature 기준 Micro-F1 .598로 최고**(베이스라인 대비 3배, PriorDist 대비 55% 개선). **Contextual feature가 content feature보다 일관되게 더 효과적**(예: KNN에서 contextual 사용 시 16%p 향상) — 가장 효과적인 단일 feature는 UserCount(현재 인기도 자체), 그다음 BorderUserCount(노출된 잠재 채택자 수).
+- **★★★ 5.3절 "Case Study: Bursty Versus Continuous Hashtags" — 우리 RQ2와 사실상 동일한 실험을 이미 수행함.** 해시태그를 bursty(사건성, 짧고 강하게 튀는 유형: #tsunami, #earthquake 등)와 continuous(꾸준한 인기: #cancer, #singapore, #love 등) 두 유형으로 나눠(Lehmann et al. 2012의 분류법 준용, 유형별 상위 25개씩 선정) 동일한 모델(LR, all features)로 예측정확도를 비교. **결과: bursty 해시태그 Micro-F1 .640, continuous 해시태그 Micro-F1 .560(전체 평균 .598)** — bursty 유형이 continuous보다 더 예측하기 쉽다는 것을 정량적으로 실증.
+- 한계/향후연구(7절): (1) 2-day 예측이 1-day보다 성능이 오르지 않음 — 2일간의 변화폭을 충분히 활용 못했다고 자평, 향후 새로운 기법 필요. (2) 해시태그에 링크된 URL의 웹문서 콘텐츠를 feature로 추가하는 방향. (3) **"우리 기법은 회사명·브랜드명·상품명 등 어떤 사전정의된 문자열(predefined string)의 인기도 예측에도 쉽게 확장 가능하다고 본다"고 명시적으로 제안** — 이는 사실상 본 연구(화장품 키워드에 이 프레임을 적용)가 이 논문이 스스로 제안한 향후연구 방향을 화장품 도메인에서 실현하는 것임을 뒷받침하는 결정적 인용 근거.
+- **차용 가능**: (1) content/contextual feature 이분법 → 우리는 "키워드 자체의 검색량 궤적(content-equivalent)" vs "카테고리 수준 변수(contextual-equivalent)"로 응용. (2) **5.3절의 유형별 비교 실험 설계(대표 키워드 표본 선정 → 동일 모델로 예측 → Micro-F1 비교) 자체가 우리 RQ2 실험(Ⅳ.4.2절)의 직접적 설계 템플릿**으로 차용 가능. (3) φ 임계치의 주관성 문제를 스스로 인정한 점은 우리가 IQR(적응형·비주관적 기준)을 택한 선택의 대조군 근거로 활용. (4) "예측 기법을 브랜드/상품명에 확장 가능하다"는 저자들의 제언을 서론 인용에 활용.
+- **차용 불가/차이점**: 소셜 그래프 기반 contextual feature(팔로우·멘션 네트워크)는 검색 트렌드 데이터에 없음 — 이식 불가. **결정적으로, 이들의 bursty/continuous 구분은 트렌드의 "형태(shape)"에 따른 사후적 재분류(같은 해시태그 집합을 궤적 패턴으로 나눈 것)이지, 우리처럼 키워드가 애초에 속한 "의미론적 유형"(성분 vs 컨셉 vs 제형 vs 효능)에 따른 사전적 카테고리 비교가 아님** — 이 구분이 우리 연구의 차별점을 지켜주는 핵심 논거이므로 THESIS_DRAFT.md에 정확히 반영 필요.
 
-**Ma, Sun & Cong (2013), "On Predicting the Popularity of Newly Emerging Hashtags in Twitter", JASIST**
-- 신규 해시태그의 "인기 여부"를 이진/다중 분류 문제로 정식화. 해시태그 문자열·트윗 내용에서 뽑은 **content feature 7개**와, 해시태그를 채택한 유저들의 소셜 그래프에서 뽑은 **contextual feature 11개**를 구성.
-- Naïve Bayes, kNN, Decision Tree, SVM, 로지스틱회귀 5개 분류기 비교 — **로지스틱회귀가 Micro-F1 기준 최고 성능**, **contextual feature가 content feature보다 효과적**이라는 핵심 결과.
-- 인기도(라벨) 정의: 특정 기간 내 해당 해시태그를 포함한 트윗을 1건 이상 올린 유니크 유저 수.
-- 트위터 3,100만 건(싱가포르 기반 유저 200만 명) 데이터로 검증.
-- **차용 가능**: (1) "content feature(자기 자신의 초기 신호) vs contextual feature(주변 맥락 신호)"라는 feature 이분법 — 우리 연구에서는 "키워드 자체의 검색량 궤적(content-equivalent)" vs "같은 카테고리 내 다른 키워드들의 동시 트렌드/카테고리 수준 변수(context-equivalent)"로 응용 가능. (2) 다중 분류기 비교(로지스틱회귀·XGBoost 외에 NB/kNN/DT/SVM 추가 검토 여지). (3) "맥락 정보가 자기 자신의 신호보다 예측력이 높다"는 결과는, 우리가 카테고리(성분/컨셉/제형/효능)를 feature/그룹변수로 넣는 설계의 이론적 근거로 인용 가능.
-- **차용 불가/차이점**: 소셜 그래프(팔로우 관계, 네트워크 구조) 기반 contextual feature는 검색 트렌드 데이터에는 존재하지 않음 — 그대로 이식 불가, 카테고리 기반 변수로 대체해야 함이 우리의 방법론적 선택.
+**Md. Siam Ansary (2022), "Breakout Stocks Identification using Machine Learning Approaches", ENP Engineering Science Journal 2(2)** — 원문 정독 완료, **09-14 스니펫 요약의 오류 정정**
+- ⚠️ **정정**: 09-14에 기록한 "SVM precision이 0.08→0.18로 개선되었으나 recall이 낮다"는 내용은 **이 논문에 없음** — 검색 스니펫이 제목이 비슷한 다른 논문(예: "Identification of Stock Breakouts Using Support Vector Machine with Integrated Fundamental Data")과 혼동되어 잘못 요약된 것으로 보임. 아래가 원문 기준 정확한 내용.
+- Breakout 정의: 최근 2주간 종가의 최댓값·최솟값을 각각 저항선/지지선으로 설정 → 최솟값이 최댓값의 98% 이상이면 "consolidation"(횡보)으로 판정 → consolidation 상태에서 당일 종가가 그 2주 최댓값/최솟값을 벗어나면 breakout으로 라벨링(이진). **이 98% 기준 자체는 고정된 임의 임계치**(우리가 기각한 "6개월 평균 대비 200%" 유형의 절대 기준과 유사) — Tukey IQR 같은 적응형 통계 기법을 쓰지 않았다는 점에서, 오히려 우리 방법론이 더 정교하다는 대조 근거로 쓸 수 있음.
+- Yahoo Finance API로 2000.1.1~2022.5.20 5,630개 표본 수집 → breakout 후보가 비breakout보다 훨씬 적어 **랜덤 언더샘플링으로 균형 데이터셋(432개) 구성** 후 학습.
+- Decision Tree/Random Forest/AdaBoost/KNN/MLP/SVM 6개 분류기(80/20 train-test split) 비교. **정확도 기준 SVM(.814)과 MLP(.791)가 최상위**, Decision Tree(.709)가 최하위. Recall도 SVM .821/MLP .824로 양호(언더샘플링으로 균형을 맞췄기 때문— 원본 불균형 데이터 그대로 썼다면 recall이 낮았을 가능성이 있으나, 논문이 직접 그렇게 진술하지는 않음).
+- 한계/향후연구(Ⅴ장, 매우 짧음): 여러 국가의 다양한 증권거래소 데이터로 확장, 딥러닝 모델 적용.
+- **차용 가능(정정 반영)**: (1) breakout 후보가 희소 클래스라는 점 자체(전체 5,630개 중 균형화 후 432개만 사용 = breakout 후보가 소수)는 여전히 유효한 시사점 — 우리도 카테고리별 breakout 비율이 낮을 가능성에 대비해 라벨 불균형 처리(언더샘플링/클래스가중치 등)를 방법론에 명시할 근거로 활용 가능. (2) 6개 분류기 비교 관행 — LR/XGBoost 외 추가 후보 검토 시 참고. (3) **"breakout" 개념과 이진분류 프레이밍이 주식 도메인에서 이미 쓰인다는 도메인 전이의 근거**로는 여전히 유효.
+- **더 이상 사용하면 안 되는 주장**: "recall이 구조적으로 낮다"는 근거로 이 논문을 인용하는 것 — 원문에 없는 내용이므로 THESIS_DRAFT.md·BORROWED_VS_CONTRIBUTION.md에서 삭제/정정 필요.
 
-**Devi & Geetha, "Trendingtags — Classification & Prediction of Hashtag Popularity Using Twitter Features in ML Approach"**
-- 해시태그 인기도를 5단계(not popular ~ extremely popular)로 다중분류. Content/contextual feature 이분법은 Ma et al.(2013)과 동일한 틀 사용.
-- Contextual feature 기반 모델이 정확도 94.4%로 최고 성능 — Ma et al.(2013)의 "contextual > content" 결과를 재확인.
-- **차용 가능**: 이진분류보다 다단계(multi-class) 분류로 확장할 가능성을 향후 연구로 언급할 수 있음(현재 설계는 breakout 여부 이진분류로 한정, 확장 여지로만 기록).
+**Forecasting the Buzz (BuzzProphet, Xu et al., CIKM 2025)** — 원문 정독 완료
+- 저자 소속: NUS(싱가포르) 등. 2025.11 CIKM 발표. arXiv:2510.08481.
+- **관련연구 섹션에서 명시적으로 "Early work [Ma, Sun & Cong 2012 SIGIR] treated hashtag popularity prediction as classification, using arbitrary thresholds to bucket popularity"라고 서술** — 즉 이 최신 논문 스스로가 "고전적 접근=이진/다중분류, 임의 임계치"라는 프레임으로 선행연구를 요약하고 있어, 우리가 선행연구를 정리하는 방식과 일치함. (단, Ma, Sun & Cong의 2013 JASIST 논문 자체는 φ=25라는 값에 대해 스스로 "주관적"이라 밝혔을 뿐 완전히 임의는 아니고 지수구간 방식이라는 점은 위에서 확인한 대로임 — BuzzProphet의 서술은 다소 단순화된 것.)
+- 문제 설정: 해시태그 인기도(조회수)를 로그정규화한 스칼라값으로 예측하는 **회귀(regression)** 문제로 전환. LLM(GPT-4o, o3-mini 등)에게 (1)토픽 카테고리 (2)타겟 오디언스 (3)게시 시점, 3가지 차원에 대한 정성적 추론(rationale)을 생성시켜 이를 텍스트 feature로 결합 → RoBERTa로 인코딩 → CatBoost 등 회귀모델 입력.
+- HashView 벤치마크: 웨이보(중국 X) 7,532개 해시태그, 2024.9~11 수집. **도메인별 분포(그림2: Entertainment 31.1%, Society 18.5%, Sports 10.2%, Politics 8.0%, Financial 7.4%, Disaster 7.1%, Health 4.7%, Military 4.7%, Science 3.4%, Education 1.7% 등)를 보고하지만, 도메인별 예측 성능 비교(우리의 RQ2에 해당하는 실험)는 논문 어디에도 없음** — 카테고리는 데이터 기술(description) 목적으로만 쓰였고, 카테고리 간 예측가능성 비교라는 우리의 질문은 이 논문에도 없는 공백으로 재확인됨.
+- 결과: RandomForest/LightGBM/CatBoost/MLP 4개 회귀모델에 LLM reasoning을 추가하면 RMSE 최대 2.75~2.83%, SRC(스피어만 상관) 최대 29~30% 개선. LLM을 직접 수치예측기로 쓰면(few-shot prompting) 오히려 성능이 나쁨(SRC 0.017~0.079) — "LLM은 숫자를 직접 예측하는 데는 약하지만, 맥락을 설명하는 추론기로 쓰면 유용하다"는 것이 핵심 메시지.
+- 한계(자체 명시): 중국어·웨이보 데이터에 한정, 다른 플랫폼/언어로 일반화 검증 안 됨; 해시태그 확산 네트워크(cascade) 데이터가 없어 그래프 기반 베이스라인 비교 제외.
+- **시사점**: (1) 최신 국제 연구(2025)는 이진/다중분류보다 회귀+LLM으로 이동하는 추세이며, 이는 우리가 이진분류를 택한 것이 "국제 최전선과 비교해 방법론적으로 단순한 선택"임을 솔직히 인정해야 함을 의미(Ⅴ장 한계에 반영). (2) 그러나 **카테고리 간 예측가능성 비교라는 질문은 이 최신 논문조차 다루지 않았다**는 점은 우리 RQ2가 여전히 유효한 공백이라는 근거를 더 강화함(HashView가 도메인 라벨을 갖고 있음에도 비교 안 함).
 
-**Md. Siam Ansary 외 (2022), "Breakout Stocks Identification using Machine Learning Approaches"**
-- 주식 시장에서 "breakout"(지지선/저항선을 거래량 동반 이탈)을 이진분류로 식별. SVM·Random Forest·Decision Tree·kNN·ANN 비교.
-- 기술적 지표(Open/High/Low/Close/Volume)에 기본적 분석(fundamental data)을 결합했을 때 SVM precision이 0.08→0.18로 개선되었으나 **recall은 여전히 낮음** — breakout처럼 희소한(rare) 이벤트를 분류할 때 재현율 확보가 근본적으로 어렵다는 한계를 명시.
-- **차용 가능**: "breakout"이라는 용어와 이진분류 프레이밍 자체가 주식 도메인에서 이미 쓰이고 있다는 근거 — 우리가 화장품 트렌드에 breakout이라는 개념을 이식하는 것이 임의적 차용이 아니라 검증된 문제 설정의 도메인 전이임을 보여줌. 동시에 **breakout처럼 희소 클래스 분류는 precision-recall 트레이드오프, 특히 낮은 recall 문제가 구조적으로 발생한다는 점을 우리 모델 평가 설계(Precision@K/Recall@K를 함께 보는 이유)의 근거로 인용 가능.**
+### 결론: 연구 공백(차별점) 주장 최종 확정 (원문 기준)
 
-**Forecasting the Buzz (BuzzProphet, CIKM 2025)**
-- 최신(2025) 연구로, 해시태그 인기도 예측을 이진분류가 아닌 **회귀(regression)** 문제로 재구성하고, LLM이 생성한 "토픽 바이럴성·도달범위·타이밍 우위에 대한 추론(rationale)"을 feature로 추가해 RMSE를 최대 2.8% 개선.
-- HashView라는 7,532개 해시태그 벤치마크 데이터셋 공개.
-- **시사점**: 최신 국제 연구는 이진분류보다 회귀·LLM기반 정성적 추론 결합으로 이동하는 추세 — 우리가 이진분류(breakout 여부)를 택한 것은 "더 단순하고 해석 가능한 설정을 화장품 도메인 R&D/마케팅 실무자가 바로 활용할 수 있도록" 하려는 의도적 선택임을 방법론 정당화에 명시할 필요. 2025년 최신 흐름과 비교해 우리 설계가 다소 단순하다는 점은 한계로 솔직히 인정하고, 향후연구로 "회귀 기반 확장" 또는 "LLM 기반 정성적 신호 결합"을 제안하는 것이 좋음.
-
-### 결론: 연구 공백(차별점) 주장 재조정 필요
-
-- **기각해야 할 주장**: "개별 키워드/항목의 breakout 여부를 이진분류로 예측하는 문제 설정 자체가 선행연구에 없다" → **사실이 아님.** 해시태그(Ma et al. 2013; Devi & Geetha)와 주식(Ansary et al. 2022) 도메인에 이미 존재하는 확립된 문제 설정.
-- **유지 가능한 주장**: (1) 이 문제 설정이 **네이버 검색 트렌드 데이터·화장품 도메인**에 적용된 선례는 없음(국내 화장품 학위논문 13편 어디에도 없었고, 위 해외 4편도 해시태그/주식 도메인). (2) **성분/컨셉/제형/효능처럼 의미론적으로 이질적인 카테고리 간 예측가능성을 정면 비교**한 연구는 위 해외 4편에도 없음 — Devi & Geetha의 "5단계 인기도 분류"나 해시태그의 "bursty/continuous/periodic" 구분은 트렌드의 형태(shape)에 따른 분류이지, 우리처럼 키워드의 의미론적 유형(성분 vs 컨셉 vs 제형 vs 효능)에 따른 예측가능성 비교가 아님.
-- **THESIS_DRAFT.md 수정 필요**: Ⅰ장 1.2 문제제기, Ⅱ장 2.2(시계열예측 섹션에 해외 breakout/바이럴 분류 문헌 추가), 2.4 비교표에 "해외 breakout/바이럴 이진분류(해시태그·주식)" 행 추가하고 본 연구의 차별점을 "문제 설정 자체"에서 "도메인 적용 + 카테고리 간 비교"로 좁혀서 재작성.
+- **기각된 주장**: "개별 키워드/항목의 breakout 여부를 이진분류로 예측하는 문제 설정 자체가 선행연구에 없다" → **사실이 아님.** Ma, Sun & Cong(2013)이 해시태그에서, Ansary(2022)가 주식에서 이미 확립.
+- **기각된 주장 (2)**: "카테고리/유형 간 예측가능성을 비교한 연구가 전혀 없다" → **완전히 사실은 아님.** Ma, Sun & Cong(2013) 5.3절이 bursty vs continuous 해시태그 간 예측정확도를 정량 비교(.640 vs .560)한 선례가 있음. **다만 이 비교는 "트렌드 형태(사후적 궤적 패턴)" 기준이고, 우리처럼 "키워드의 의미론적 유형(사전적 카테고리: 성분/컨셉/제형/효능)" 기준의 비교는 이 논문에도, BuzzProphet(2025)에도 없음.** 이 구분이 이제 우리 차별점 주장의 핵심 근거.
+- **최종 확정된 차별점**: (1) breakout 이진분류라는 문제 설정을 네이버 검색 트렌드·화장품 도메인에 적용(도메인 전이, Ma et al. 2013이 스스로 제안한 "brand/product name으로 확장 가능"이라는 향후연구를 실현하는 것으로 포지셔닝 가능). (2) **의미론적으로 이질적인 카테고리(성분/컨셉/제형/효능) 간 예측가능성 비교** — Ma et al.(2013)의 "형태별" 비교와는 다른 축의 비교이며, 이 축의 비교는 국내외 문헌 전체에서 확인되지 않음. (3) 실제 제품 데이터(올리브영)와의 연결.
+- **THESIS_DRAFT.md 반영 필요**: Ⅰ장 1.2, Ⅱ장 2.2에 Ma et al.(2013)의 5.3절 bursty/continuous 비교 결과를 정확히 인용하고, "형태별 비교 vs 의미론적 유형별 비교"라는 구분을 명시적으로 서술할 것. Ansary(2022) 관련 "recall 낮음" 서술은 삭제/정정할 것.
 
 ---
 
@@ -242,10 +245,10 @@
 1. ~~RESEARCH_PLAN.md 방법론 섹션에 Tukey IQR breakout 라벨링 방법 반영~~ → 완료(2026-09-10).
 2. ~~"패션 브랜드 및 광고모델의 검색량과 정보량이 매출에 미치는 영향 — ARDL 시계열 모형" 원문 정독~~ → 완료(2026-09-14, 서주연 2018).
 3. ~~"패션 브랜드 웹기반 소비자평가 트렌드 분석" 원문 정독~~ → 완료(2026-09-14, 허준석 2018).
-4. **업로드된 13편 모두 원문 확인 완료.** 다음 단계는 지금까지의 발견을 실제 RESEARCH_PLAN.md 방법론(feature 설계·검증 설계)에 구체적으로 반영하는 것.
-5. 위 목록 중 2.1의 "빅데이터 분석을 통한 화장품 트렌드 변화 추이" 논문은 여전히 원문 미확보(DBpia/KCI 접근 필요) — 필요시 을지대 도서관 계정으로 확보.
-6. 2.2의 arXiv 논문들은 무료로 원문 열람 가능 — 아직 미독. 필요도는 낮아짐(국내 학위논문에서 이미 충분한 방법론적 선례 확보).
-7. 원문 확인 후, 우리 연구의 차별점(성분/컨셉/제형/효능 카테고리별 예측가능성 비교)이 기존 연구에 없다는 것을 명확히 하는 문장을 Ⅰ장 서론에 반영
+4. ~~해외 breakout/바이럴 분류 문헌 원문 확인~~ → 완료(2026-09-15, 사용자가 직접 PDF 3편 확보해 업로드: Ma/Sun/Cong 2013, Ansary 2022, BuzzProphet 2025). **Devi & Geetha "Trendingtags"만 여전히 스니펫 수준** — 접근 가능해지면 원문 확인 권장(급하지 않음, 위 3편만으로도 차별점 주장 확정에 충분).
+5. **다음 단계: THESIS_DRAFT.md·BORROWED_VS_CONTRIBUTION.md·.docx를 위 원문 확정 내용(특히 Ma et al. 2013의 5.3절 bursty/continuous 비교, Ansary 2022 수치 정정)으로 일괄 업데이트.**
+6. 위 목록 중 2.1의 "빅데이터 분석을 통한 화장품 트렌드 변화 추이" 논문은 여전히 원문 미확보(DBpia/KCI 접근 필요) — 필요시 을지대 도서관 계정으로 확보.
+7. 원문 확인 후, 우리 연구의 차별점(성분/컨셉/제형/효능 카테고리별 예측가능성 비교)이 기존 연구에 없다는 것을 명확히 하는 문장을 Ⅰ장 서론에 반영 — 완료(아래 THESIS_DRAFT.md 갱신에 반영).
 8. **RQ1/모델 설계 반영 필요(아직 RESEARCH_PLAN.md 미반영)**:
    - 김병완(2021)·서주연(2018) 두 논문 모두 "베이스라인(외부변수 없음) vs 외부변수(검색량 등) 추가 모형"을 R²/RMSE로 비교하는 동일한 ablation 구조를 채택 — 우리 모델 검증 단계(Ⅳ장)에 이 구조를 정식 반영할지 결정 필요. 현재 RESEARCH_PLAN.md의 "베이스라인: 최근 증가율 상위 K개 단순 선택"을 유지할지, 이 ablation 구조로 교체/추가할지 결정.
    - 서주연(2018)의 **교차상관(cross-correlation) 기반 최적 시차 자동 선택** 방법을 feature 설계(현재 "최근 N개월 검색량 증가율"의 N을 어떻게 정할지)에 반영 검토.
