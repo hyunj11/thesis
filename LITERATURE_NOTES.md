@@ -199,6 +199,45 @@
 
 ---
 
+---
+
+## ⚠️ 2026-09-14 재점검: "breakout 이진분류라는 문제 설정 자체는 새롭지 않음" — 해외 문헌 확인
+
+**계기**: "개별 키워드의 breakout 여부를 예측하는 문제 설정 자체, 카테고리 간 예측가능성 비교"를 다룬 연구가 "단 하나도 없다"는 주장은 사용자가 업로드한 13편(국내 화장품/뷰티 도메인 학위논문 중심)에 한정된 스크리닝 결과였고, 전세계 학술DB 전체를 훑은 게 아니었음. 사용자 지적에 따라 웹검색으로 재점검(원문 사이트는 이 세션 네트워크 정책상 접근 차단되어 검색 스니펫으로만 확인, 원문 대조는 사용자가 RISS/Google Scholar 등에서 추가 확인 필요).
+
+**핵심 확인 사항**: "개별 항목의 breakout/바이럴 여부를 이진분류로 예측"하는 문제 설정 자체는 데이터마이닝/소셜미디어 분석 분야에서 **이미 확립된 연구 흐름**임. 아래 4편이 대표적 선례:
+
+**Ma, Sun & Cong (2013), "On Predicting the Popularity of Newly Emerging Hashtags in Twitter", JASIST**
+- 신규 해시태그의 "인기 여부"를 이진/다중 분류 문제로 정식화. 해시태그 문자열·트윗 내용에서 뽑은 **content feature 7개**와, 해시태그를 채택한 유저들의 소셜 그래프에서 뽑은 **contextual feature 11개**를 구성.
+- Naïve Bayes, kNN, Decision Tree, SVM, 로지스틱회귀 5개 분류기 비교 — **로지스틱회귀가 Micro-F1 기준 최고 성능**, **contextual feature가 content feature보다 효과적**이라는 핵심 결과.
+- 인기도(라벨) 정의: 특정 기간 내 해당 해시태그를 포함한 트윗을 1건 이상 올린 유니크 유저 수.
+- 트위터 3,100만 건(싱가포르 기반 유저 200만 명) 데이터로 검증.
+- **차용 가능**: (1) "content feature(자기 자신의 초기 신호) vs contextual feature(주변 맥락 신호)"라는 feature 이분법 — 우리 연구에서는 "키워드 자체의 검색량 궤적(content-equivalent)" vs "같은 카테고리 내 다른 키워드들의 동시 트렌드/카테고리 수준 변수(context-equivalent)"로 응용 가능. (2) 다중 분류기 비교(로지스틱회귀·XGBoost 외에 NB/kNN/DT/SVM 추가 검토 여지). (3) "맥락 정보가 자기 자신의 신호보다 예측력이 높다"는 결과는, 우리가 카테고리(성분/컨셉/제형/효능)를 feature/그룹변수로 넣는 설계의 이론적 근거로 인용 가능.
+- **차용 불가/차이점**: 소셜 그래프(팔로우 관계, 네트워크 구조) 기반 contextual feature는 검색 트렌드 데이터에는 존재하지 않음 — 그대로 이식 불가, 카테고리 기반 변수로 대체해야 함이 우리의 방법론적 선택.
+
+**Devi & Geetha, "Trendingtags — Classification & Prediction of Hashtag Popularity Using Twitter Features in ML Approach"**
+- 해시태그 인기도를 5단계(not popular ~ extremely popular)로 다중분류. Content/contextual feature 이분법은 Ma et al.(2013)과 동일한 틀 사용.
+- Contextual feature 기반 모델이 정확도 94.4%로 최고 성능 — Ma et al.(2013)의 "contextual > content" 결과를 재확인.
+- **차용 가능**: 이진분류보다 다단계(multi-class) 분류로 확장할 가능성을 향후 연구로 언급할 수 있음(현재 설계는 breakout 여부 이진분류로 한정, 확장 여지로만 기록).
+
+**Md. Siam Ansary 외 (2022), "Breakout Stocks Identification using Machine Learning Approaches"**
+- 주식 시장에서 "breakout"(지지선/저항선을 거래량 동반 이탈)을 이진분류로 식별. SVM·Random Forest·Decision Tree·kNN·ANN 비교.
+- 기술적 지표(Open/High/Low/Close/Volume)에 기본적 분석(fundamental data)을 결합했을 때 SVM precision이 0.08→0.18로 개선되었으나 **recall은 여전히 낮음** — breakout처럼 희소한(rare) 이벤트를 분류할 때 재현율 확보가 근본적으로 어렵다는 한계를 명시.
+- **차용 가능**: "breakout"이라는 용어와 이진분류 프레이밍 자체가 주식 도메인에서 이미 쓰이고 있다는 근거 — 우리가 화장품 트렌드에 breakout이라는 개념을 이식하는 것이 임의적 차용이 아니라 검증된 문제 설정의 도메인 전이임을 보여줌. 동시에 **breakout처럼 희소 클래스 분류는 precision-recall 트레이드오프, 특히 낮은 recall 문제가 구조적으로 발생한다는 점을 우리 모델 평가 설계(Precision@K/Recall@K를 함께 보는 이유)의 근거로 인용 가능.**
+
+**Forecasting the Buzz (BuzzProphet, CIKM 2025)**
+- 최신(2025) 연구로, 해시태그 인기도 예측을 이진분류가 아닌 **회귀(regression)** 문제로 재구성하고, LLM이 생성한 "토픽 바이럴성·도달범위·타이밍 우위에 대한 추론(rationale)"을 feature로 추가해 RMSE를 최대 2.8% 개선.
+- HashView라는 7,532개 해시태그 벤치마크 데이터셋 공개.
+- **시사점**: 최신 국제 연구는 이진분류보다 회귀·LLM기반 정성적 추론 결합으로 이동하는 추세 — 우리가 이진분류(breakout 여부)를 택한 것은 "더 단순하고 해석 가능한 설정을 화장품 도메인 R&D/마케팅 실무자가 바로 활용할 수 있도록" 하려는 의도적 선택임을 방법론 정당화에 명시할 필요. 2025년 최신 흐름과 비교해 우리 설계가 다소 단순하다는 점은 한계로 솔직히 인정하고, 향후연구로 "회귀 기반 확장" 또는 "LLM 기반 정성적 신호 결합"을 제안하는 것이 좋음.
+
+### 결론: 연구 공백(차별점) 주장 재조정 필요
+
+- **기각해야 할 주장**: "개별 키워드/항목의 breakout 여부를 이진분류로 예측하는 문제 설정 자체가 선행연구에 없다" → **사실이 아님.** 해시태그(Ma et al. 2013; Devi & Geetha)와 주식(Ansary et al. 2022) 도메인에 이미 존재하는 확립된 문제 설정.
+- **유지 가능한 주장**: (1) 이 문제 설정이 **네이버 검색 트렌드 데이터·화장품 도메인**에 적용된 선례는 없음(국내 화장품 학위논문 13편 어디에도 없었고, 위 해외 4편도 해시태그/주식 도메인). (2) **성분/컨셉/제형/효능처럼 의미론적으로 이질적인 카테고리 간 예측가능성을 정면 비교**한 연구는 위 해외 4편에도 없음 — Devi & Geetha의 "5단계 인기도 분류"나 해시태그의 "bursty/continuous/periodic" 구분은 트렌드의 형태(shape)에 따른 분류이지, 우리처럼 키워드의 의미론적 유형(성분 vs 컨셉 vs 제형 vs 효능)에 따른 예측가능성 비교가 아님.
+- **THESIS_DRAFT.md 수정 필요**: Ⅰ장 1.2 문제제기, Ⅱ장 2.2(시계열예측 섹션에 해외 breakout/바이럴 분류 문헌 추가), 2.4 비교표에 "해외 breakout/바이럴 이진분류(해시태그·주식)" 행 추가하고 본 연구의 차별점을 "문제 설정 자체"에서 "도메인 적용 + 카테고리 간 비교"로 좁혀서 재작성.
+
+---
+
 ## 다음 액션
 1. ~~RESEARCH_PLAN.md 방법론 섹션에 Tukey IQR breakout 라벨링 방법 반영~~ → 완료(2026-09-10).
 2. ~~"패션 브랜드 및 광고모델의 검색량과 정보량이 매출에 미치는 영향 — ARDL 시계열 모형" 원문 정독~~ → 완료(2026-09-14, 서주연 2018).
