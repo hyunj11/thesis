@@ -16,7 +16,7 @@
 ## 최종 연구 주제
 **검색 트렌드 데이터 기반 화장품 성분·컨셉·제형·효능 키워드의 조기 예측(Breakout Prediction) 모델**
 
-- 국문 제목(가안): 검색 트렌드 기반 화장품 성분·컨셉·제형·효능 키워드의 조기 예측 모델 연구
+- 국문 제목(가안): 검색 트렌드 기반 화장품 키워드 유형별 유행 조기예측 모델 연구
 - 영문 제목(가안): Early Prediction of Cosmetics Trend Keywords Using Search Trend Data
 
 ## 연구 질문 (RQ)
