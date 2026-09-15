@@ -1,5 +1,5 @@
 # 검색 트렌드 기반 화장품 키워드 유형별 유행 조기예측 모델 연구
-### Early Prediction of Cosmetics Trend Keywords Using Search Trend Data
+### Early Prediction of Cosmetics Keyword Trends by Type Using Search Trend Data
 
 > **초안 안내**: 본 문서는 지도교수님 컨펌을 받기 위한 논문 초안입니다. Ⅰ~Ⅲ장은 실제 집필 수준으로 작성했고, Ⅳ장(실험 및 결과)·Ⅴ장(결론)은 아직 데이터 수집·모델 학습을 진행하기 전이므로 **"어떤 실험을 어떻게 수행할 예정인지"에 대한 계획**으로 작성했습니다. 교수님 피드백을 받은 뒤 실제 실험을 수행하고 Ⅳ·Ⅴ장을 결과로 채워 넣을 예정입니다.
 

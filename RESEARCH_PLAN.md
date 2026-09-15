@@ -17,7 +17,7 @@
 **검색 트렌드 데이터 기반 화장품 성분·컨셉·제형·효능 키워드의 조기 예측(Breakout Prediction) 모델**
 
 - 국문 제목(가안): 검색 트렌드 기반 화장품 키워드 유형별 유행 조기예측 모델 연구
-- 영문 제목(가안): Early Prediction of Cosmetics Trend Keywords Using Search Trend Data
+- 영문 제목(가안): Early Prediction of Cosmetics Keyword Trends by Type Using Search Trend Data
 
 ## 연구 질문 (RQ)
 - **RQ1**: 초기 상승 패턴(검색량 증가율 등)으로 향후 특정 키워드의 breakout(트렌드 진입) 여부를 예측할 수 있는가?
