@@ -31,7 +31,7 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
-API_URL = "https://naveropenapi.apigw.ntruss.com/datalab/v1/search"
+API_URL = "https://naverapihub.apigw.ntruss.com/search-trend/v1/search"
 CONFIG_PATH = Path("config.json")
 KEYWORDS_CSV = Path("naver_keywords_final.csv")
 RAW_DIR = Path("naver_trends_raw")
