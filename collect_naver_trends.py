@@ -8,7 +8,8 @@
   2. 발급받은 Client ID / Client Secret을 config.json에 기록
      (config.example.json을 복사해서 config.json으로 만들고 값만 채우면 됨.
       config.json은 .gitignore에 등록돼 있어 깃에 올라가지 않음)
-  3. pip install requests
+
+  * 파이썬 기본 모듈(urllib)만 사용하므로 pip install이 따로 필요 없음.
 
 실행:
   python collect_naver_trends.py
@@ -25,9 +26,9 @@ import argparse
 import csv
 import json
 import time
+import urllib.error
+import urllib.request
 from pathlib import Path
-
-import requests
 
 API_URL = "https://openapi.naver.com/v1/datalab/search"
 CONFIG_PATH = Path("config.json")
@@ -62,7 +63,7 @@ def safe_filename(keyword):
     return keyword.replace("/", "_").replace(" ", "_")
 
 
-def fetch_batch(session, headers, keyword_rows, start_date, end_date, time_unit):
+def fetch_batch(headers, keyword_rows, start_date, end_date, time_unit):
     body = {
         "startDate": start_date,
         "endDate": end_date,
@@ -72,10 +73,15 @@ def fetch_batch(session, headers, keyword_rows, start_date, end_date, time_unit)
             for row in keyword_rows
         ],
     }
-    resp = session.post(API_URL, headers=headers, json=body, timeout=10)
-    if resp.status_code != 200:
-        raise RuntimeError(f"API 오류 {resp.status_code}: {resp.text}")
-    return resp.json()
+    data = json.dumps(body).encode("utf-8")
+    req = urllib.request.Request(API_URL, data=data, headers=headers, method="POST")
+    try:
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            return json.loads(resp.read().decode("utf-8"))
+    except urllib.error.HTTPError as e:
+        raise RuntimeError(f"API 오류 {e.code}: {e.read().decode('utf-8', errors='ignore')}")
+    except urllib.error.URLError as e:
+        raise RuntimeError(f"네트워크 오류: {e.reason}")
 
 
 def main():
@@ -97,13 +103,12 @@ def main():
     todo = [r for r in all_rows if not already_fetched(r["keyword"])]
     print(f"전체 {len(all_rows)}개 중 이미 수집됨 {len(all_rows) - len(todo)}개, 남은 작업 {len(todo)}개")
 
-    session = requests.Session()
     for i in range(0, len(todo), GROUPS_PER_REQUEST):
         batch = todo[i : i + GROUPS_PER_REQUEST]
         names = ", ".join(r["keyword"] for r in batch)
         print(f"[{i // GROUPS_PER_REQUEST + 1}] 요청: {names}")
         try:
-            data = fetch_batch(session, headers, batch, args.start_date, args.end_date, args.time_unit)
+            data = fetch_batch(headers, batch, args.start_date, args.end_date, args.time_unit)
         except Exception as e:
             print(f"  실패: {e}")
             time.sleep(REQUEST_DELAY_SEC * 3)
