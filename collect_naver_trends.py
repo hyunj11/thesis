@@ -3,9 +3,10 @@
 키워드별 주간 검색량 추이를 수집한다.
 
 사전 준비:
-  1. https://developers.naver.com/apps/#/register 에서 애플리케이션 등록
-     (사용 API: "검색어트렌드")
-  2. 발급받은 Client ID / Client Secret을 config.json에 기록
+  1. NAVER API HUB(NCP 콘솔 > Application Service > NAVER API HUB)에서
+     애플리케이션 등록 (사용 API: "Search Trend"/"검색어트렌드")
+  2. 발급받은 Client ID(X-NCP-APIGW-API-KEY-ID) / Client Secret
+     (X-NCP-APIGW-API-KEY)을 config.json에 기록
      (config.example.json을 복사해서 config.json으로 만들고 값만 채우면 됨.
       config.json은 .gitignore에 등록돼 있어 깃에 올라가지 않음)
 
@@ -30,7 +31,7 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
-API_URL = "https://openapi.naver.com/v1/datalab/search"
+API_URL = "https://naveropenapi.apigw.ntruss.com/datalab/v1/search"
 CONFIG_PATH = Path("config.json")
 KEYWORDS_CSV = Path("naver_keywords_final.csv")
 RAW_DIR = Path("naver_trends_raw")
@@ -93,8 +94,8 @@ def main():
 
     config = load_config()
     headers = {
-        "X-Naver-Client-Id": config["client_id"],
-        "X-Naver-Client-Secret": config["client_secret"],
+        "X-NCP-APIGW-API-KEY-ID": config["client_id"],
+        "X-NCP-APIGW-API-KEY": config["client_secret"],
         "Content-Type": "application/json",
     }
 
