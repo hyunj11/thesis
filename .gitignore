@@ -1,0 +1,4 @@
+config.json
+*.secret
+.env
+naver_trends_raw/
