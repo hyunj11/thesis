@@ -263,13 +263,13 @@ RQ2("성분/컨셉·클레임/제형/효능 네 카테고리 간 트렌드 변�
 18. H&I글로벌리서치, "한국의 화장품 시장: 시장규모, 점유율, 예측(2025년-2033년)", (사이트주소), (2025, 정확한 URL·열람일 미기록 — 원출처 재확인 필요).
 19. Korea Herald, "K-beauty exports cross $11b milestone in 2025", (사이트주소), (2026, 정확한 URL·열람일 미기록 — 원출처 재확인 필요).
 20. Ma, Z., Sun, A., & Cong, G.(2013), "On predicting the popularity of newly emerging hashtags in Twitter", Journal of the American Society for Information Science and Technology – 64(7), 1399-1410. **(원문 정독 완료, 2026-09-15)**
-21. Devi, K. N., & Geetha, R., "Trendingtags — Classification & Prediction of Hashtag Popularity Using Twitter Features in Machine Learning Approach", 출판연도·수록지 미상. **(미확인 — 검색 스니펫만 파악)**
+21. Devi, P. S., Geetha, R., & Karthika, S.(2019), "Trendingtags — Classification & Prediction of Hashtag Popularity Using Twitter Features in Machine Learning Approach", Computational Intelligence in Data Mining: Proceedings of the International Conference on ICCIDM 2018(Advances in Intelligent Systems and Computing, vol. 990), 161-177.
 22. Ansary, M. S.(2022), "Breakout Stocks Identification using Machine Learning Approaches", ENP Engineering Science Journal – 2(2), 52-56. **(원문 정독 완료, 2026-09-15)**
 23. Xu, Y., Wu, J., Wan, H., Li, Y., Hou, Z., & Kan, M.-Y.(2025), "Forecasting the Buzz: Enriching Hashtag Popularity Prediction with LLM Reasoning", Proceedings of the 34th ACM International Conference on Information and Knowledge Management(CIKM '25). **(원문 정독 완료, 2026-09-15)**
 24. McLaren, N., & Shanbhogue, R.(2011), "Using internet search data as economic indicators", Bank of England Quarterly Bulletin – Q2, 134-140.
 25. Nafi, Z., Benmoussa, R., & Elharouni, F.(2024), "Enhancing Cosmetic Supply Chain Efficiency Through Demand Forecasting Using Machine Learning", World Conference of AI-Powered Innovation and Inventive Design: 24th IFIP WG 5.4 International TRIZ Future Conference(TFC 2024), Part Ⅱ, IFIP Advances in Information and Communication Technology, 212-231.
 
-> ※ 20·22·23번 문헌은 사용자가 직접 원문 PDF를 확보해 2026-09-15 전체 정독·검증 완료. 24·25번은 2026-10-05 WebSearch로 서지사항(저자·수록지·권호·쪽수)을 확인해 위와 같이 확정했으나(McLaren & Shanbhogue 2011은 Bank of England 공식 PDF로, Nafi 외 2024는 Springer 공식 챕터 페이지로 교차 확인), **원문 전체를 정독하지는 않았다** — 본문 서술(실업률·주택시장 예측 선례, 화장품 수요예측 머신러닝 선례)이 실제 논문 내용과 어긋나지 않는지는 제출 전 원문 확보 후 재확인 필요. 21번(Devi & Geetha)만 서지사항조차 아직 확인하지 못한 상태로 남아있음.
+> ※ 20·22·23번 문헌은 사용자가 직접 원문 PDF를 확보해 2026-09-15 전체 정독·검증 완료. 21·24·25번은 2026-10-05 WebSearch로 서지사항(저자·수록지·권호·쪽수)을 확인해 위와 같이 확정했다(21번 Devi 외 2019는 Springer 공식 챕터 페이지, 24번 McLaren & Shanbhogue 2011은 Bank of England 공식 PDF, 25번 Nafi 외 2024는 Springer 공식 챕터 페이지로 각각 교차 확인) — 다만 세 건 모두 **원문 전체를 정독하지는 않았다**, 본문 서술이 실제 논문 내용과 어긋나지 않는지는 제출 전 원문 확보 후 재확인 필요. 아울러 21번은 본문(Ⅰ~Ⅴ장) 어디에도 실제로 인용되지 않고 참고문헌 목록에만 있다는 점도 확인됨 — 본문에서 근거로 쓰지 않을 것이면 목록에서도 제외하는 것이 일반적인 참고문헌 작성 원칙에 맞음(교수님께 확인받고 싶은 부분 참고).
 
 > ※ 1.1절의 산업 통계는 2026-09 시점 웹 검색으로 확인한 수치이며, 실제 제출 전 반드시 원출처(관세청/코트라 수출입통계, 올리브영 IR자료, 통계청 등 1차 자료)를 대조해 정확한 수치와 발표 시점을 재확인할 것. 특히 "세계 2위 수출국", "매출 5.8조원" 등은 언론 보도 기준이므로 학술논문 인용 기준으로는 공식 통계 원자료(관세청, 식약처, 코트라)로 대체하는 것이 바람직하며, 16~19번 문헌의 정확한 URL·열람일도 이때 함께 보완할 것.
 
@@ -277,9 +277,9 @@ RQ2("성분/컨셉·클레임/제형/효능 네 카테고리 간 트렌드 변�
 
 ## 교수님께 확인받고 싶은 부분 (별도 정리)
 
-0. **(2026-09-14 발견 → 09-15 원문 검증 완료)** 애초 초안에는 "개별 키워드 breakout 이진분류라는 문제 설정 자체가 선행연구에 없다"고 썼으나, 해시태그[20]·주식[22] 도메인에는 이미 이 문제 설정이 존재함을 원문으로 확인. 더 나아가 Ma et al.[20]은 해시태그를 bursty/continuous 두 "형태"로 나눠 예측정확도를 비교하는 실험까지 이미 수행(Micro-F1 .640 vs .560)했음도 확인. 이에 따라 차별점 주장을 "도메인 전이(화장품·네이버 검색 트렌드에 최초 적용) + **트렌드 형태가 아닌 키워드의 의미론적 유형(성분/컨셉/제형/효능) 간 비교**"로 한 번 더 정밀하게 좁힘. 이 방향의 차별점 주장이 학술제 심사 기준으로 충분한지, 그리고 "형태별 비교 vs 의미론적 유형별 비교"라는 구분이 심사위원에게 설득력 있게 읽히는지 검토 부탁드립니다. (Devi & Geetha[21] 1편만 아직 원문 미확인.)
+0. **(2026-09-14 발견 → 09-15 원문 검증 완료)** 애초 초안에는 "개별 키워드 breakout 이진분류라는 문제 설정 자체가 선행연구에 없다"고 썼으나, 해시태그[20]·주식[22] 도메인에는 이미 이 문제 설정이 존재함을 원문으로 확인. 더 나아가 Ma et al.[20]은 해시태그를 bursty/continuous 두 "형태"로 나눠 예측정확도를 비교하는 실험까지 이미 수행(Micro-F1 .640 vs .560)했음도 확인. 이에 따라 차별점 주장을 "도메인 전이(화장품·네이버 검색 트렌드에 최초 적용) + **트렌드 형태가 아닌 키워드의 의미론적 유형(성분/컨셉/제형/효능) 간 비교**"로 한 번 더 정밀하게 좁힘. 이 방향의 차별점 주장이 학술제 심사 기준으로 충분한지, 그리고 "형태별 비교 vs 의미론적 유형별 비교"라는 구분이 심사위원에게 설득력 있게 읽히는지 검토 부탁드립니다.
 1. Ⅱ장 선행연구 구성(2.1~2.4)과 <표 1> 비교표가 "본 연구의 차별점"을 설득력 있게 보여주는지.
 2. Ⅲ장의 Tukey IQR 라벨링 방법과 그 근거(가성회귀 회피, 국내 선례 존재)가 방법론적으로 충분히 정당화되었는지.
 3. **(2026-10-05 업데이트)** Ⅳ·Ⅴ장이 이제 실제 데이터 수집·모델 학습 결과로 채워졌습니다(4.1~4.3, 5.1~5.2). 결과의 해석(특히 성분 카테고리가 가장 예측이 어려웠다는 점, Precision@K 절대 수준이 낮다는 점)이 학술제 심사 기준으로 충분히 설득력 있는지, 혹은 추가 보완이 필요한 부분이 있는지 검토 부탁드립니다.
 4. 베이스라인 설계(단순 규칙 vs ablation 구조)를 두 개 다 넣는 것이 적절한지, 아니면 하나로 통일하는 것이 나을지.
-5. **(2026-10-05 업데이트)** 참고문헌 24·25번(McLaren & Shanbhogue 2011, Nafi 외 2024)은 WebSearch로 서지사항(저자·수록지·쪽수)을 확인해 확정했습니다(24번: Bank of England Quarterly Bulletin 공식 PDF, 25번: Springer 공식 챕터 페이지로 교차 확인). 다만 원문 전체를 정독하지는 않아 본문에서 서술한 내용(실업률·주택시장 예측 선례, 화장품 수요예측 머신러닝 선례)이 실제 논문과 정확히 일치하는지는 아직 검증 전입니다 — 제출 전 원문 확보가 필요한지, 아니면 서지사항 확인만으로 충분한지 의견 부탁드립니다. 21번(Devi & Geetha)은 여전히 서지사항조차 미확인 상태입니다.
+5. **(2026-10-05 업데이트)** 참고문헌 21·24·25번(Devi 외 2019, McLaren & Shanbhogue 2011, Nafi 외 2024) 모두 WebSearch로 서지사항(저자·수록지·쪽수)을 확인해 확정했습니다(21번·25번: Springer 공식 챕터 페이지, 24번: Bank of England 공식 PDF로 교차 확인). 다만 세 건 모두 원문 전체를 정독하지는 않아, 본문에서 서술한 내용이 실제 논문과 정확히 일치하는지는 아직 검증 전입니다 — 제출 전 원문 확보가 필요한지, 서지사항 확인만으로 충분한지 의견 부탁드립니다. 아울러 **21번(Devi 외)은 본문 Ⅰ~Ⅴ장 어디에도 실제로 인용되지 않고 참고문헌 목록에만 올라가 있다는 것도 확인했습니다** — 본문에 실제로 반영할 내용(예: Ma, Sun & Cong(2013)와 유사한 해시태그 인기도 분류 선례로 1.2절·2.2절에 추가 언급)이 있는지, 아니면 참고문헌 목록에서 제외하는 게 나을지 판단 부탁드립니다.
