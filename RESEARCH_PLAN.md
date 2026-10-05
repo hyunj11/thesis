@@ -140,6 +140,17 @@ df.to_csv("naver_trend_labeled.csv", index=False, encoding="utf-8-sig")
 - 과거 구간(예: ~2022)으로 학습 → 이후 구간(2023~2025)에서 실제 breakout 여부와 비교
 - 평가지표: Precision@K, Recall@K, AUC
 - 카테고리별(성분/컨셉/제형/효능) 변동성 지표(변동계수, peak 대비 baseline 비율, half-life)도 함께 분석해 RQ2 뒷받침
+  - 지표 정의: ① 변동계수(CV) = std(ratio)/mean(ratio), 키워드별 전체 수집 기간 기준(breakout 예측용 feature가 아니라 RQ2를 뒷받침하는 기술통계이므로 백테스팅 train/test 분리와 무관하게 전체 기간 사용). ② peak 대비 baseline 비율 = max(ratio)/median(ratio) — median을 baseline으로 쓰는 이유는 compute_seasonality.py의 계절 기준선과 동일(이상치에 강건). ③ half-life = label_breakouts.py가 만든 is_breakout 시점의 ratio(peak)가 그 절반 이하로 떨어지기까지 걸린 주 수. 관측 가능 구간(최대 52주 또는 데이터 끝) 안에 peak/2 이하로 안 떨어지면 중도절단(censored)으로 처리하고 집계에서 제외, censored 비율도 함께 보고.
+  - **2026-10-05 실행 완료** (`compute_category_volatility.py` → `category_volatility_summary.csv`):
+
+    | 카테고리 | CV | peak/baseline | breakout 이벤트 수 | censored 비율 | half-life 중앙값(주) |
+    |---|---|---|---|---|---|
+    | 성분 | 0.575 | 7.53 | 378 | 35.7% | 7.0 |
+    | 제형 | 0.595 | 6.44 | 241 | 22.8% | 7.0 |
+    | 컨셉·클레임 | 0.765 | 10.15 | 206 | 1.9% | 2.5 |
+    | 효능 | 0.388 | 2.74 | 264 | 21.2% | 5.0 |
+
+  - 해석: 세 지표 모두 컨셉·클레임이 가장 변동성이 큼(CV 0.765, peak/baseline 10.15배)과 동시에 half-life가 가장 짧음(2.5주) — 유행이 가장 크게 튀고 가장 빨리 식는 카테고리라는 뜻으로, compute_volatility.py에서 이미 관찰한 "컨셉·클레임 평균 변동성(56.5)이 가장 크다"는 결과와도 일치. 효능은 반대로 CV·peak/baseline 모두 가장 낮아(0.388, 2.74배) 가장 완만한 카테고리. 이 패턴은 logistic_regression_model.py/xgboost_model.py에서 효능의 AUC 개선폭이 가장 컸던 것(0.450→0.825)과도 연결지어 해석 가능 — 변동이 완만하고 예측 가능한 패턴을 보이는 카테고리일수록 모델이 더 잘 맞는다는 가설로 Ⅳ장에서 종합할 예정. (구현 중 half-life 중도절단 판정 로직에 버그 — decay를 실제로 찾았는데도 breakout 시점이 데이터 끝 근처라는 이유만으로 censored로 잘못 표시되는 문제 — 를 발견해 수정: censored는 오직 "관측 가능 구간 내 decay를 못 찾음" 한 가지 조건으로만 판정하도록 단순화.)
 
 ## 목차 (학술제 논문 양식 기준, Ⅰ~Ⅲ + 참고문헌 필수, Ⅳ·Ⅴ 확장)
 
