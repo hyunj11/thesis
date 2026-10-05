@@ -7,7 +7,7 @@
 
 ## Abstract (초안)
 
-Rapid shifts in consumer attention toward specific cosmetics ingredients, product concepts, formulations, and efficacy claims make early trend detection valuable for R&D and marketing decision-making. However, existing studies on cosmetics trends are largely descriptive (text-mining, sentiment/network analysis of already-popular keywords), and studies that forecast which individual keywords will become popular are rare, particularly ones that compare predictability across conceptually distinct keyword types. This study proposes a supervised breakout-prediction model that uses Naver Search Trend data to classify, before the fact, which cosmetics-related keywords—drawn from four categories (ingredient, concept/claim, formulation, and efficacy)—are likely to "break out" in the near future. Breakout events are labeled using Tukey's IQR outlier method applied to week-over-week search-volume growth rates within each category, avoiding an arbitrary threshold. Logistic regression and gradient-boosting classifiers (XGBoost) are trained on pre-breakout features (recent growth rate, volatility, seasonal deviation) and backtested on a held-out future period. In addition to overall predictive performance, this study compares predictability and volatility across the four keyword categories to answer whether some categories of cosmetics trends are inherently more predictable than others. A supplementary validation step links predicted breakout keywords to actual best-selling product ingredient lists collected from a major Korean beauty retailer (Oliveyoung), illustrating practical relevance for R&D and marketing teams.
+Rapid shifts in consumer attention toward specific cosmetics ingredients, product concepts, formulations, and efficacy claims make early trend detection valuable for R&D and marketing decision-making. However, existing studies on cosmetics trends are largely descriptive (text-mining, sentiment/network analysis of already-popular keywords), and studies that forecast which individual keywords will become popular are rare, particularly ones that compare predictability across conceptually distinct keyword types. This study proposes a supervised breakout-prediction model that uses Naver Search Trend data to classify, before the fact, which cosmetics-related keywords—drawn from four categories (ingredient, concept/claim, formulation, and efficacy)—are likely to "break out" in the near future. Breakout events are labeled using Tukey's IQR outlier method applied to week-over-week search-volume growth rates within each category, avoiding an arbitrary threshold. Logistic regression and gradient-boosting classifiers (XGBoost) are trained on pre-breakout features (recent growth rate, volatility, seasonal deviation) and backtested on a held-out future period. In addition to overall predictive performance, this study compares predictability and volatility across the four keyword categories to answer whether some categories of cosmetics trends are inherently more predictable than others. A supplementary validation step links predicted breakout keywords to actual best-selling products (ingredient lists for ingredient keywords, product names for the other three categories) collected from a major Korean beauty retailer (Oliveyoung), illustrating practical relevance for R&D and marketing teams.
 
 **Key Words**: Cosmetics Trend, Search Trend Data, Breakout Prediction, Big Data, Machine Learning, Naver Trend
 
@@ -17,7 +17,7 @@ Rapid shifts in consumer attention toward specific cosmetics ingredients, produc
 
 ### 1.1 연구 배경 및 필요성
 
-화장품 산업은 트렌드 변화의 속도가 빠르고, 신제품 기획부터 출시까지 걸리는 리드타임이 길기 때문에 트렌드를 얼마나 일찍 포착하느냐가 R&D·마케팅 의사결정의 성패를 좌우한다. 특정 성분(예: PDRN, 나이아신아마이드)이나 컨셉(예: '저자극', '비건'), 제형(예: '앰플', '쿠션'), 효능 키워드(예: '모공', '리프팅')에 대한 소비자 관심은 특정 시점을 기점으로 급격히 상승하는 경우가 많으며, 이러한 변화를 사후적으로 확인하는 것을 넘어 사전에 예측할 수 있다면 기업은 신제품 기획·원료 소싱·마케팅 캠페인 설계에 있어 경쟁 우위를 확보할 수 있다.
+화장품 산업은 트렌드 변화의 속도가 빠르고, 신제품 기획부터 출시까지 걸리는 리드타임이 길기 때문에 트렌드를 얼마나 일찍 포착하느냐가 R&D·마케팅 의사결정의 성패를 좌우한다. 특정 성분(예: PDRN, 나이아신아마이드)이나 컨셉(예: '저자극', '비건'), 제형(예: '앰플', '쿠션파운데이션'), 효능 키워드(예: '모공', '리프팅')에 대한 소비자 관심은 특정 시점을 기점으로 급격히 상승하는 경우가 많으며, 이러한 변화를 사후적으로 확인하는 것을 넘어 사전에 예측할 수 있다면 기업은 신제품 기획·원료 소싱·마케팅 캠페인 설계에 있어 경쟁 우위를 확보할 수 있다.
 
 이러한 문제의식은 최근 화장품 산업의 성장세와 함께 실무적 중요성이 더욱 커지고 있다. 한국 화장품 수출액은 2025년 114억 달러(전년 대비 12.3% 증가)를 기록하며 사상 최대치를 경신했고, 한국은 프랑스에 이어 세계 2위 화장품 수출국으로 올라섰다(코트라·산업통상자원부 집계 기준). 이 중 스킨케어가 전체 수출의 약 75%(85.4억 달러)를 차지해 여전히 압도적 비중을 보였으나, 색조 화장품도 15.1억 달러(전년 대비 12.0% 증가)로 성장하며 스킨케어에 편중되지 않은 다변화 추세를 보이고 있다. 수출 대상국도 2024년 172개국에서 2025년 202개국으로 확대되었고, 처음으로 미국(22억 달러, 19.1%)이 중국을 제치고 최대 수출국으로 올라서는 등 시장 구조 자체도 빠르게 변화하고 있다[19].
 
@@ -84,7 +84,7 @@ Rapid shifts in consumer attention toward specific cosmetics ingredients, produc
 
 ### 2.3 국내 뷰티 이커머스 데이터 활용 연구 동향
 
-올리브영과 같은 국내 뷰티 플랫폼 데이터를 학술적으로 다룬 연구도 존재한다. 올리브영 리뷰 빅데이터를 텍스트마이닝한 연구는 기초화장품 유형별 소비자 선택속성·만족/불만족 요인을 분석했으며, 올리브영 자체도 연 1억 건 이상의 구매 데이터를 기반으로 트렌드 리포트를 정례화하고 있어 업계에서도 이미 이러한 데이터를 트렌드 파악에 활용하고 있음을 보여준다. Springer[25]에 게재된 화장품 수요예측 연구는 실제 화장품 판매 데이터로 여러 머신러닝 알고리즘의 적용 가능성을 비교했다는 점에서, 화장품 도메인에서 예측 모델링이 실무적으로 이미 요구되고 있음을 뒷받침한다.
+올리브영과 같은 국내 뷰티 플랫폼 데이터를 학술적으로 다룬 연구도 존재한다. 올리브영 리뷰 빅데이터를 텍스트마이닝한 연구[26]는 기초화장품 유형별 소비자 선택속성·만족/불만족 요인을 분석했으며, 올리브영 자체도 연 1억 건 이상의 구매 데이터를 기반으로 트렌드 리포트를 정례화하고 있어[27] 업계에서도 이미 이러한 데이터를 트렌드 파악에 활용하고 있음을 보여준다. Springer[25]에 게재된 화장품 수요예측 연구는 실제 화장품 판매 데이터로 여러 머신러닝 알고리즘의 적용 가능성을 비교했다는 점에서, 화장품 도메인에서 예측 모델링이 실무적으로 이미 요구되고 있음을 뒷받침한다.
 
 ### 2.4 선행연구 종합 및 본 연구의 차별점
 
@@ -113,7 +113,7 @@ Rapid shifts in consumer attention toward specific cosmetics ingredients, produc
 
 **(3) 동음이의어·명칭 충돌 검증**: 김영식·이승호[3]와 허준석[12] 두 선행연구에서 공통으로 확인된 동음이의어 문제(예: 한약재 '제니'와 아이돌 이름의 충돌)를 방지하기 위해, 확정된 키워드 리스트는 개별 검색을 통해 유명인·타 제품군·일반명사와 의미가 겹치지 않는지 1차 필터링한다.
 
-**(4) 실무 검증용 보조 스냅샷**: 올리브영 랭킹 상위 제품과 상품별 전성분 데이터를 수집한다(현재 랭킹 100개 상품 목록은 확보되었으나, Cloudflare 봇 탐지로 전성분 자동 수집은 제약이 있어 20~30개 소규모 수동 수집으로 전환할 예정). 이 데이터는 모델의 핵심 학습 데이터가 아니라, 예측된 breakout 키워드가 실제 인기 제품에 얼마나 반영되는지를 보여주는 사례 제시용 보조 자료로 사용한다.
+**(4) 실무 검증용 보조 스냅샷**: 올리브영 판매랭킹 상위 100개 상품 목록과 상품별 전성분 데이터를 수집한다. 자동 수집 과정에서 Cloudflare 봇 탐지로 제약이 있었으나, 최종적으로 100개 상품 중 97개(화장품이 아닌 3개 제외)의 전성분 데이터를 확보했다(`ranking_products.csv`, `ranking_ingredients.csv`). 이 데이터는 모델의 핵심 학습 데이터가 아니라, 예측된 breakout 키워드가 실제 인기 제품에 얼마나 반영되는지를 보여주는 사례 제시용 보조 자료로 사용한다.
 
 ### 3.2 Breakout 라벨링 기준
 
@@ -124,20 +124,23 @@ Rapid shifts in consumer attention toward specific cosmetics ingredients, produc
 ```python
 import pandas as pd
 
-df = pd.read_csv("naver_trend_data.csv")
+df = pd.read_csv("naver_trends.csv")
+df["period"] = pd.to_datetime(df["period"])
+
+# 완전히 끝나지 않은 마지막 주 제외 (as_of = 데이터 수집 시점)
+period_end = df["period"] + pd.Timedelta(days=6)
+df = df[period_end < as_of].copy()
+
+# 전주 대비 증가율
 df = df.sort_values(["keyword", "period"])
 df["growth_rate"] = df.groupby("keyword")["ratio"].pct_change() * 100
 
-def flag_outlier(group):
-    q1 = group["growth_rate"].quantile(0.25)
-    q3 = group["growth_rate"].quantile(0.75)
-    iqr = q3 - q1
-    threshold = q3 + 1.5 * iqr
-    group["breakout_threshold"] = threshold
-    group["is_breakout"] = group["growth_rate"] > threshold
-    return group
-
-df = df.groupby("category", group_keys=False).apply(flag_outlier)
+# 카테고리별 Tukey IQR 임계치 적용
+grouped = df.groupby("category")["growth_rate"]
+q1 = grouped.transform(lambda s: s.quantile(0.25))
+q3 = grouped.transform(lambda s: s.quantile(0.75))
+df["breakout_threshold"] = q3 + 1.5 * (q3 - q1)
+df["is_breakout"] = df["growth_rate"] > df["breakout_threshold"]
 ```
 
 카테고리별로 그룹화하는 이유는 RQ2(카테고리 간 변동성 비교) 설계상 "이례적 급등"의 기준선 자체가 카테고리마다 다를 수 있음을 반영하기 위함이다.
@@ -148,7 +151,7 @@ df = df.groupby("category", group_keys=False).apply(flag_outlier)
 
 - **최근 N주 검색량 증가율(기울기)**: N을 임의로 고정하지 않고, 서주연[7]의 교차상관(cross-correlation) 기반 최적 시차 선택 방법을 응용하여, 후보 시차 1~26주(약 6개월에 해당하는 범위) 구간에서 growth_rate를 L주 과거로 이동(shift)한 값과 breakout 라벨 간 상관관계가 가장 높은 시차를 카테고리별로 데이터 기반 선택한다(성분 14주/제형 22주/컨셉·클레임 7주/효능 24주로 선택됨).
 - **검색량 변동성(분산)**: 위에서 선택한 카테고리별 N주 윈도를 그대로 사용해, 현재 시점 이전 N주 구간의 growth_rate 표준편차로 계산한다(현재 시점 값은 제외해 미래 정보 누수를 방지).
-- **계절성 대비 이례적 상승 여부**: 동일 ISO 주차(예: 매년 "9월 넷째 주")의 과거 연도 검색 비율 중앙값을 계절 기준선으로 삼고, 현재 비율이 그 기준선 대비 몇 % 벗어났는지로 계산한다. 기준선은 반드시 해당 연도보다 이전 연도의 값으로만 계산해 미래 정보 누수를 방지한다.
+- **계절성 대비 이례적 상승 여부**: 동일 ISO 주차(예: 매년 "9월 넷째 주")의 과거 연도 검색 비율 중앙값을 계절 기준선으로 삼고, 현재 비율이 그 기준선 대비 몇 % 벗어났는지로 계산한다. 기준선은 반드시 해당 연도보다 이전 연도의 값으로만 계산해 미래 정보 누수를 방지한다. 다만 이 식 자체는 현재 시점 t의 검색 비율을 분자로 쓰므로, 모델 입력으로 사용할 때는 1주 과거로 다시 이동(shift)해 "T-1 시점까지 관측된 계절 편차"로 넣는다 — is_breakout도 t 시점 비율로부터 정의되므로, 같은 t 시점 값을 그대로 feature로 쓰면 라벨을 만든 값으로 라벨을 예측하는 누수가 되기 때문이다(4.0절 참고).
 - 카테고리(성분/컨셉/제형/효능) 자체를 feature 또는 그룹 변수로 활용
 
 ### 3.4 예측 모델 설계
@@ -168,9 +171,9 @@ df = df.groupby("category", group_keys=False).apply(flag_outlier)
 
 ### 4.0 데이터 및 실험 설정
 
-네이버 데이터랩 검색어트렌드 API로 69개 후보 키워드 중 67개(성분 22/컨셉·클레임 13/제형 15/효능 19)의 **주간(week)** 상대 검색량을 2020-12-28~2026-09-28 구간에서 수집했다(나머지 2개, "Non-합성향료"·"백탁없음"은 네이버 데이터랩 자체에 검색 데이터가 없어 제외). 수집 시점에 아직 종료되지 않은 마지막 주(2026-09-28)는 부분 집계된 값이므로 분석에서 제외했으며, 최종 분석 대상은 18,539행이다.
+네이버 데이터랩 검색어트렌드 API로 69개 후보 키워드(성분 22/컨셉·클레임 13/제형 15/효능 19) 중 67개(성분 22/컨셉·클레임 11/제형 15/효능 19)의 **주간(week)** 상대 검색량을 2020-12-28~2026-09-28 구간에서 수집했다(나머지 2개, "Non-합성향료"·"백탁없음"은 둘 다 컨셉·클레임 카테고리 후보였으나 네이버 데이터랩 자체에 검색 데이터가 없어 제외). 수집 시점에 아직 종료되지 않은 마지막 주(2026-09-28)는 부분 집계된 값이므로 분석에서 제외했으며, 최종 분석 대상은 18,539행이다.
 
-Tukey's IQR 이상치 탐지법(Q3+1.5×IQR, 카테고리별 그룹화)으로 breakout을 라벨링한 결과 양성(breakout) 비율은 전체 5.9%였다(성분 5.9%, 제형 5.5%, 컨셉·클레임 8.6%, 효능 4.9% — 4개 카테고리 모두 전형적인 불균형 이진분류 문제에 해당한다). Feature는 (1) 카테고리별 교차상관(cross-correlation) 기반으로 선택한 lag N주 전 증가율(서주연[7]의 방법 응용 — 성분 14주/제형 22주/컨셉·클레임 7주/효능 24주로 선택됨, |r|=0.06~0.10으로 상관관계 자체는 약함), (2) 동일 lag 윈도로 계산한 검색량 변동성(전주 이전 구간의 표준편차), (3) 계절-나이브 기준선(동일 ISO 주차의 과거 연도 중앙값) 대비 편차로 구성했으며, 모두 라벨링 시점 T 이전 데이터만 사용해 미래 정보 누수를 방지했다. 백테스팅은 봉기태·이희상[6]의 구조를 준용해 2022-12-31 이전을 학습(6,684행), 2023-01-01~2025-12-31을 테스트(9,650행)로 분리했다. 클래스 불균형은 로지스틱회귀에 `class_weight="balanced"`, XGBoost에 `scale_pos_weight`를 적용해 대응했다(Ansary[22]가 주식 breakout 분류에서 언더샘플링으로 대응했던 것과 같은 목적을 가중치 방식으로 구현).
+Tukey's IQR 이상치 탐지법(Q3+1.5×IQR, 카테고리별 그룹화)으로 breakout을 라벨링한 결과 양성(breakout) 비율은 전체 5.9%였다(성분 5.9%, 제형 5.5%, 컨셉·클레임 8.6%, 효능 4.9% — 4개 카테고리 모두 전형적인 불균형 이진분류 문제에 해당한다). Feature는 (1) 카테고리별 교차상관(cross-correlation) 기반으로 선택한 lag N주 전 증가율(서주연[7]의 방법 응용 — 성분 14주/제형 22주/컨셉·클레임 7주/효능 24주로 선택됨, |r|=0.06~0.10으로 상관관계 자체는 약함), (2) 동일 lag 윈도로 계산한 검색량 변동성(전주 이전 구간의 표준편차), (3) 계절-나이브 기준선(동일 ISO 주차의 과거 연도 중앙값) 대비 편차로 구성했으며, 모두 라벨링 시점 T 이전 데이터만 사용해 미래 정보 누수를 방지했다 — (3)의 계절편차는 수식 자체가 현재 시점 t의 비율을 분자로 쓰므로, 모델 입력에는 1주 과거로 다시 이동해 T-1 시점 값으로 투입했다. 백테스팅은 봉기태·이희상[6]의 구조를 준용해 2022-12-31 이전을 학습(6,684행), 2023-01-01~2025-12-31을 테스트(9,650행)로 분리했다. 클래스 불균형은 로지스틱회귀에 `class_weight="balanced"`, XGBoost에 `scale_pos_weight`를 적용해 대응했다(Ansary[22]가 주식 breakout 분류에서 언더샘플링으로 대응했던 것과 같은 목적을 가중치 방식으로 구현).
 
 ### 4.1 전체 모델 성능
 
@@ -268,8 +271,12 @@ RQ2("성분/컨셉·클레임/제형/효능 네 카테고리 간 트렌드 변�
 23. Xu, Y., Wu, J., Wan, H., Li, Y., Hou, Z., & Kan, M.-Y.(2025), "Forecasting the Buzz: Enriching Hashtag Popularity Prediction with LLM Reasoning", Proceedings of the 34th ACM International Conference on Information and Knowledge Management(CIKM '25). **(원문 정독 완료, 2026-09-15)**
 24. McLaren, N., & Shanbhogue, R.(2011), "Using internet search data as economic indicators", Bank of England Quarterly Bulletin – Q2, 134-140.
 25. Nafi, Z., Benmoussa, R., & Elharouni, F.(2024), "Enhancing Cosmetic Supply Chain Efficiency Through Demand Forecasting Using Machine Learning", World Conference of AI-Powered Innovation and Inventive Design: 24th IFIP WG 5.4 International TRIZ Future Conference(TFC 2024), Part Ⅱ, IFIP Advances in Information and Communication Technology, 212-231.
+26. 서소명(2022), "텍스트 마이닝 기법을 활용한 고객 리뷰 감성분석: 올리브영 기초 화장품 리뷰 빅데이터 중심으로", 우송대학교 일반대학원 경영학과 박사학위논문.
+27. CJ올리브영, "외부 데이터 활용해 다양한 분석 담은 트렌드 리포트 정기 발간", https://corp.oliveyoung.com/ko/news/93, (2026.10.05).
 
 > ※ 20·22·23번 문헌은 사용자가 직접 원문 PDF를 확보해 2026-09-15 전체 정독·검증을 완료했고, **2026-10-05에 동일 PDF를 다시 대조해 본문에 인용된 모든 구체적 수치를 재검증**했다 — 20번(Ma, Sun & Cong): content/contextual feature 7/11개, 5개 분류기, 31백만 트윗, 10-fold CV, LR Micro-F1 .598, bursty/continuous .640/.560, "predefined string" 확장 제언까지 전부 원문과 정확히 일치. 22번(Ansary): breakout 정의(직전 2주 98% 이내 횡보), 6개 분류기, 언더샘플링 432개, SVM .814/MLP .791 최우수까지 전부 일치. 23번(Xu et al.): GPT-4o·o3-mini 포함 3개 LLM, 3개 추론 차원, RMSE 최대 2.8%·SRC 최대 30% 개선, HashView 7,532개(2024년 9~11월, Weibo)까지 전부 일치. 수정이 필요한 불일치는 발견되지 않았다. 21·24·25번은 2026-10-05 WebSearch로 서지사항(저자·수록지·권호·쪽수)만 확인했고(21번 Devi 외 2019는 Springer 공식 챕터 페이지, 24번 McLaren & Shanbhogue 2011은 Bank of England 공식 PDF, 25번 Nafi 외 2024는 Springer 공식 챕터 페이지로 각각 교차 확인), 원문 전체 내용 대조는 아직 하지 않았다 — 제출 전 원문 확보 후 재확인 필요. 아울러 21번은 본문(Ⅰ~Ⅴ장) 어디에도 실제로 인용되지 않고 참고문헌 목록에만 있다는 점도 확인됨 — 본문에서 근거로 쓰지 않을 것이면 목록에서도 제외하는 것이 일반적인 참고문헌 작성 원칙에 맞음(교수님께 확인받고 싶은 부분 참고).
+
+> ※ **(2026-10-05 전체 재검토 중 발견)** 2.3절의 두 문장("올리브영 리뷰 빅데이터를 텍스트마이닝한 연구", "올리브영 연 1억 건 이상 구매 데이터 기반 트렌드 리포트")이 각주 번호 없이 본문에 쓰여 있던 것을 발견 — LITERATURE_NOTES.md에만 메모돼 있고 참고문헌 목록·본문 인용 어디에도 반영되지 않은 상태였음. WebSearch로 확인한 결과 둘 다 실존하는 내용이었다(전자는 서소명(2022, 우송대 박사논문), 후자는 CJ올리브영 공식 뉴스룸·언론보도로 뒷받침됨 — "해마다 1억 개 이상 쌓이는 내부 데이터"라는 올리브영 자체 발표와 일치). 26·27번으로 추가하고 본문에 [26][27]을 표기해 반영했다. 다만 26번(서소명 2022)은 서지사항(저자·학위·소속)만 WebSearch로 확인했고 원문은 읽지 않았다 — 21·24·25번과 같은 수준의 미검증 상태이므로 제출 전 원문 확보 권장. 27번은 학술논문이 아닌 기업 뉴스룸·언론 보도이므로 "원문 정독" 개념이 적용되지 않으며, 공식 발표 수치라는 점에서 그대로 인용 가능하다고 판단.
 
 > ※ 1.1절의 산업 통계는 2026-09 시점 웹 검색으로 확인한 수치이며, 실제 제출 전 반드시 원출처(관세청/코트라 수출입통계, 올리브영 IR자료, 통계청 등 1차 자료)를 대조해 정확한 수치와 발표 시점을 재확인할 것. 특히 "세계 2위 수출국", "매출 5.8조원" 등은 언론 보도 기준이므로 학술논문 인용 기준으로는 공식 통계 원자료(관세청, 식약처, 코트라)로 대체하는 것이 바람직함.
 
@@ -285,3 +292,9 @@ RQ2("성분/컨셉·클레임/제형/효능 네 카테고리 간 트렌드 변�
 3. **(2026-10-05 업데이트)** Ⅳ·Ⅴ장이 이제 실제 데이터 수집·모델 학습 결과로 채워졌습니다(4.1~4.3, 5.1~5.2). 결과의 해석(특히 성분 카테고리가 가장 예측이 어려웠다는 점, Precision@K 절대 수준이 낮다는 점)이 학술제 심사 기준으로 충분히 설득력 있는지, 혹은 추가 보완이 필요한 부분이 있는지 검토 부탁드립니다.
 4. 베이스라인 설계(단순 규칙 vs ablation 구조)를 두 개 다 넣는 것이 적절한지, 아니면 하나로 통일하는 것이 나을지.
 5. **(2026-10-05 업데이트)** 참고문헌 21·24·25번(Devi 외 2019, McLaren & Shanbhogue 2011, Nafi 외 2024) 모두 WebSearch로 서지사항(저자·수록지·쪽수)을 확인해 확정했습니다(21번·25번: Springer 공식 챕터 페이지, 24번: Bank of England 공식 PDF로 교차 확인). 다만 세 건 모두 원문 전체를 정독하지는 않아, 본문에서 서술한 내용이 실제 논문과 정확히 일치하는지는 아직 검증 전입니다 — 제출 전 원문 확보가 필요한지, 서지사항 확인만으로 충분한지 의견 부탁드립니다. 아울러 **21번(Devi 외)은 본문 Ⅰ~Ⅴ장 어디에도 실제로 인용되지 않고 참고문헌 목록에만 올라가 있다는 것도 확인했습니다** — 본문에 실제로 반영할 내용(예: Ma, Sun & Cong(2013)와 유사한 해시태그 인기도 분류 선례로 1.2절·2.2절에 추가 언급)이 있는지, 아니면 참고문헌 목록에서 제외하는 게 나을지 판단 부탁드립니다.
+6. **(2026-10-05 전체 재검토에서 발견)** 논문 전체를 처음부터 다시 훑으며 "임의로 쓴 내용·부정확한 내용·불필요한 내용"이 없는지 점검했습니다. 발견·수정한 사항:
+   - Ⅳ장 4.0절의 수집 키워드 카테고리별 개수(성분/컨셉·클레임/제형/효능)가 "22/13/15/19"로 잘못 적혀 있었음(69개 후보 기준 숫자가 그대로 남아있던 오기) — 실제 수집·사용된 숫자는 "22/11/15/19"(합 67)로 정정했습니다.
+   - Ⅲ장 3.1(4)가 "올리브영 전성분 자동 수집은 Cloudflare 때문에 20~30개로 축소 예정"이라는 초기 계획 상태로 남아 있었는데, 실제로는 97개(전체 100개 중 비화장품 3개 제외)를 확보해 Ⅳ장과 불일치했습니다 — Ⅲ장을 실제 달성한 결과로 수정했습니다.
+   - Ⅱ장 2.3절의 두 문장(올리브영 리뷰 텍스트마이닝 연구, 올리브영 "연 1억 건" 구매 데이터 언급)이 각주 번호 없이 쓰여 있었던 것을 발견해 26·27번 참고문헌으로 추가하고 인용 표기했습니다(위 5번 항목 참고).
+   - Ⅱ·Ⅳ·Ⅴ장에 등장하는 모든 구체적 수치(선행연구 인용 수치, 모델 성능 지표, 변동성 지표, 올리브영 매칭률 등)를 원문 PDF 또는 실제 결과 CSV 파일과 하나씩 대조했고, 위 두 건 외에는 추가로 수정할 부정확한 수치를 찾지 못했습니다.
+   - 이 점검 자체가 논문 신뢰도에 중요하다고 판단해 과정과 결과를 투명하게 남겨둡니다 — 혹시 더 점검이 필요하다고 보시는 부분이 있으면 말씀해 주세요.
