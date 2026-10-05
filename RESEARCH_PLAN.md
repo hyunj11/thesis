@@ -38,38 +38,48 @@
 - **실무 검증(보조)용 스냅샷**: 올리브영 랭킹 + 상품별 전성분 데이터
   - 목적: 모델이 예측한 트렌드 키워드가 실제 인기제품에 얼마나 반영되고 있는지 사례로 제시 (본 모델의 핵심 데이터는 아니고 보조 검증 역할)
 
-### 2) Breakout 라벨링 기준 — Tukey's IQR 이상치 탐지법 (2026-09-09 확정)
+### 2) Breakout 라벨링 기준 — Tukey's IQR 이상치 탐지법 (2026-09-09 확정, 2026-10-05 주 단위로 보정)
 - ~~(기각) 이전 6개월 평균 대비 200% 증가~~ → 임의 임계치라 근거 부족으로 기각.
 - ~~(기각) Google Trends 공식 breakout 정의(검색량 5,000%+ 증가)~~ → 네이버 트렌드는 이미 0~100 정규화된 상대값이라 절대 검색량 기반인 구글 기준을 그대로 적용할 근거 없음.
-- **최종 채택**: 키워드별 전월 대비 증가율(growth_rate = pct_change)을 계산 → **카테고리(성분/컨셉/제형/효능)별로 그룹화**하여 Q3 + 1.5×IQR을 초과하는 시점을 breakout으로 라벨링.
+- **시간 해상도: 전월(month) → 전주(week)로 변경.** 애초 이 절을 작성할 때는 막연히 월 단위를 가정했으나, 실제 네이버 데이터랩 API 수집은 `timeUnit=week`로 진행했음(69개 키워드 중 67개, 2020-12-28~2026-09-21 수집 완료, `naver_trends.csv`). 조기예측(RQ1)이라는 연구 목적상 월 단위보다 주 단위가 더 빠른 신호 포착에 적합하고, 이미 수집된 데이터의 해상도와도 맞춰야 하므로 이 절 전체를 주 단위 기준으로 통일함.
+- **최종 채택**: 키워드별 전주 대비 증가율(growth_rate = pct_change, %)을 계산 → **카테고리(성분/컨셉·클레임/제형/효능)별로 그룹화**하여 Q3 + 1.5×IQR을 초과하는 시점을 breakout으로 라벨링.
   - 카테고리별로 그룹화하는 이유: RQ2(카테고리 간 변동성 비교) 설계상 "이례적 급등"의 기준선 자체가 카테고리마다 다를 수 있음을 반영.
   - 근거: (1) 통계학에서 널리 검증된 표준 이상치 탐지법, (2) 데이터 분포에 따라 자동으로 임계치가 조정되는 적응형(adaptive) 기준이라 임의성 논란을 줄임, (3) 증가율(differenced) 기반이라 원 수준값(level) 시계열의 가성회귀(spurious regression, Yule 1926) 위험을 우회하는 효과도 있음 — 두 비정상 시계열이 우연히 유사한 추세를 보여도 실제로는 무관할 수 있다는 문제(문태남 2017, VECM 건설비지수 논문에서 실증: CCI와 무관한 'Samsung Group' 검색어도 상관계수 0.93)를 완화.
   - 동일한 IQR 이상치 탐지 공식이 국내 유사 연구(김병완 2021, 포털 검색량 기반 중고차 가격예측 석사논문)에서도 실제 채택된 선례 확보.
-- SPSS Explore 절차 또는 Python(pandas groupby+quantile)으로 구현 가능:
+- **데이터 품질 보정(2026-10-05 추가)**: 네이버 데이터랩 주간 데이터는 수집 시점에 아직 끝나지 않은 마지막 주가 부분 집계된 값으로 반환되는 문제가 있음("요일별 검색량 패턴이 불균등해 비례 보정은 편향을 만들 수 있다"고 판단해 pro-rating 대신 채택). 해결책은 단순한 규칙: **그 주의 종료일이 수집 시점 이전인, "완전히 끝난 주"만 분석에 사용**하고 나머지는 제외. growth_rate/IQR 계산 전에 반드시 적용.
+- 실제 구현(`label_breakouts.py`, 실행 완료 → `naver_trend_labeled.csv`):
 ```python
 import pandas as pd
-df = pd.read_csv("naver_trend_data.csv")
+
+df = pd.read_csv("naver_trends.csv")
+df["period"] = pd.to_datetime(df["period"])
+
+# 1) 완전히 끝나지 않은 마지막 주 제외 (as_of = 데이터 수집 시점)
+period_end = df["period"] + pd.Timedelta(days=6)
+df = df[period_end < as_of].copy()
+
+# 2) 전주 대비 증가율
 df = df.sort_values(["keyword", "period"])
 df["growth_rate"] = df.groupby("keyword")["ratio"].pct_change() * 100
-def flag_outlier(group):
-    q1 = group["growth_rate"].quantile(0.25)
-    q3 = group["growth_rate"].quantile(0.75)
-    iqr = q3 - q1
-    threshold = q3 + 1.5 * iqr
-    group["breakout_threshold"] = threshold
-    group["is_breakout"] = group["growth_rate"] > threshold
-    return group
-df = df.groupby("category", group_keys=False).apply(flag_outlier)
+
+# 3) 카테고리별 Tukey IQR 임계치 적용
+grouped = df.groupby("category")["growth_rate"]
+q1 = grouped.transform(lambda s: s.quantile(0.25))
+q3 = grouped.transform(lambda s: s.quantile(0.75))
+df["breakout_threshold"] = q3 + 1.5 * (q3 - q1)
+df["is_breakout"] = df["growth_rate"] > df["breakout_threshold"]
+
 df.to_csv("naver_trend_labeled.csv", index=False, encoding="utf-8-sig")
 ```
+  - (참고) `groupby(...).apply()` 대신 `groupby(...).transform()`을 쓴 이유는 연구 설계와 무관한 구현 디테일: pandas 3.0부터 `apply()`가 그룹 키 컬럼(category)을 결과에서 제외하는 동작으로 바뀌어 `transform()`으로 대체.
 - 절대 검색량이 아닌 상대적 증가율 기준 → 원래 유명한 키워드와 신생 키워드 간 공정성 확보
 
 ### 3) Feature 설계 (라벨링 시점 T 이전 데이터만 사용, 미래 정보 누수 방지)
-- 최근 N개월 검색량 증가율(기울기)
-  - N을 임의로 정하지 않고, **서주연(2018, 이화여대) ARDL 논문의 교차상관(cross-correlation) 기반 최적 시차 선택 방법**을 참고해 결정 검토 — 각 후보 시차(1~N개월)에서 breakout 여부와의 상관관계를 교차상관으로 계산해 가장 설명력 높은 시차를 데이터 기반으로 선택.
-- 검색량 변동성(분산)
+- 최근 N주 검색량 증가율(기울기) — 월 단위(개월) 대신 라벨링과 동일한 주 단위로 통일(2026-10-05 보정).
+  - N을 임의로 정하지 않고, **서주연(2018, 이화여대) ARDL 논문의 교차상관(cross-correlation) 기반 최적 시차 선택 방법**을 참고해 결정 — 후보 시차 후보군을 1~26주(약 6개월에 해당하는 범위로, 기존 "1~N개월" 탐색 범위를 주 단위로 환산)로 두고, 각 후보 시차에서 breakout 여부와의 상관관계를 교차상관으로 계산해 가장 설명력 높은 시차를 데이터 기반으로 선택. **(TODO: 실제 교차상관 계산은 아직 미실행, label 데이터 확정 후 진행)**
+- 검색량 변동성(분산) — 동일하게 최근 N주 구간 기준으로 계산(구체적 윈도 크기는 위 교차상관 결과에 맞춰 함께 결정 예정).
 - 계절성 대비 이례적 상승 여부
-- 카테고리(성분/컨셉/제형/효능) 자체도 feature 또는 그룹 변수로 활용
+- 카테고리(성분/컨셉·클레임/제형/효능) 자체도 feature 또는 그룹 변수로 활용
 
 ### 4) 모델
 - 베이스라인: 최근 증가율 상위 K개를 단순 선택
@@ -123,6 +133,8 @@ df.to_csv("naver_trend_labeled.csv", index=False, encoding="utf-8-sig")
   - headless 모드는 100% 차단, headed 모드도 반복 요청 시 점점 확인창이 잦아짐 (세션/IP 신뢰도 저하로 추정)
   - **결정: 자동화 크롤링은 보조 검증 용도로만 소규모(20~30개) 수동 수집으로 전환**. 이는 연구 설계상 원래도 "1회성 스냅샷" 역할이라 큰 문제 없음.
 - 파싱 로직(BeautifulSoup 기반, `<th>상품정보 제공고시</th>` 아코디언 클릭 후 `<td>` 성분 텍스트 추출)은 검증 완료, 재사용 가능.
+- **2026-09-29: 네이버 데이터랩 검색어트렌드 수집 완료.** `naver_keywords_final.csv`(69개 키워드, 사전+검색 기반 동음이의어 재검증 반영) 기준으로 `collect_naver_trends.py` 실행 → 67/69개 키워드, 2020-12-28~2026-09-28(주간) 수집 성공. 나머지 2개(Non-합성향료, 백탁없음)는 네이버 데이터랩에 검색 데이터 자체가 없는 것으로 확인(버그 아님). 결과: `naver_trends.csv`.
+- **2026-10-05: Breakout 라벨링 완료.** `label_breakouts.py` 실행 → 수집 시점 기준 완전히 끝나지 않은 마지막 주(2026-09-28)를 제외하고 Tukey IQR 라벨링 적용. 결과: `naver_trend_labeled.csv` (18,539행, breakout 양성 1,089건 — 성분 378 / 제형 241 / 컨셉·클레임 206 / 효능 264). 위 "2) Breakout 라벨링 기준" 절을 이 실행 결과에 맞춰 주 단위로 보정함.
 
 ## 학과/제출 관련 메모
 - 학술제: 의료IT학과 전공학술제 (2026)
