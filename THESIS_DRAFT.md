@@ -1,13 +1,13 @@
 # 검색 트렌드 기반 화장품 키워드 유형별 유행 조기예측 모델 연구
 ### Early Prediction of Cosmetics Keyword Trends by Type Using Search Trend Data
 
-> **초안 안내**: 본 문서는 지도교수님 컨펌을 받기 위한 논문 초안입니다. Ⅰ~Ⅳ장은 실제 데이터 수집·모델 학습 결과(2026-09-29 데이터 수집, 2026-10-05 라벨링·feature·모델링·검증 완료)를 반영해 작성했습니다. Ⅴ장(결론)만 Ⅳ장 결과를 바탕으로 한 "작성 예정" 상태로 남아 있습니다. ⚠️ Ⅰ·Ⅱ·Ⅲ장 본문에는 아직 초기 설계 당시의 "월간(monthly)" 데이터 가정이 일부 남아 있을 수 있습니다 — 실제로는 네이버 데이터랩 API가 주간(weekly) 단위로 수집되어 Ⅳ장은 전부 주 단위 수치로 작성되었으니, 장 간 표현이 다르면 Ⅳ장(실제 실행 결과)을 기준으로 봐주시기 바랍니다.
+> **초안 안내**: 본 문서는 지도교수님 컨펌을 받기 위한 논문 초안입니다. Ⅰ~Ⅳ장은 실제 데이터 수집·모델 학습 결과(2026-09-29 데이터 수집, 2026-10-05 라벨링·feature·모델링·검증 완료)를 반영해 작성했으며, Ⅲ장은 2026-10-05에 초기 설계 당시의 "월간(monthly)" 가정을 실제 수집 단위인 "주간(weekly)"으로 전면 수정해 Ⅳ장과 표현을 통일했습니다. Ⅴ장(결론)만 Ⅳ장 결과를 바탕으로 한 "작성 예정" 상태로 남아 있습니다.
 
 ---
 
 ## Abstract (초안)
 
-Rapid shifts in consumer attention toward specific cosmetics ingredients, product concepts, formulations, and efficacy claims make early trend detection valuable for R&D and marketing decision-making. However, existing studies on cosmetics trends are largely descriptive (text-mining, sentiment/network analysis of already-popular keywords), and studies that forecast which individual keywords will become popular are rare, particularly ones that compare predictability across conceptually distinct keyword types. This study proposes a supervised breakout-prediction model that uses Naver Search Trend data to classify, before the fact, which cosmetics-related keywords—drawn from four categories (ingredient, concept/claim, formulation, and efficacy)—are likely to "break out" in the near future. Breakout events are labeled using Tukey's IQR outlier method applied to month-over-month search-volume growth rates within each category, avoiding an arbitrary threshold. Logistic regression and gradient-boosting classifiers (XGBoost) are trained on pre-breakout features (recent growth rate, volatility, seasonal deviation) and backtested on a held-out future period. In addition to overall predictive performance, this study compares predictability and volatility across the four keyword categories to answer whether some categories of cosmetics trends are inherently more predictable than others. A supplementary validation step links predicted breakout keywords to actual best-selling product ingredient lists collected from a major Korean beauty retailer (Oliveyoung), illustrating practical relevance for R&D and marketing teams.
+Rapid shifts in consumer attention toward specific cosmetics ingredients, product concepts, formulations, and efficacy claims make early trend detection valuable for R&D and marketing decision-making. However, existing studies on cosmetics trends are largely descriptive (text-mining, sentiment/network analysis of already-popular keywords), and studies that forecast which individual keywords will become popular are rare, particularly ones that compare predictability across conceptually distinct keyword types. This study proposes a supervised breakout-prediction model that uses Naver Search Trend data to classify, before the fact, which cosmetics-related keywords—drawn from four categories (ingredient, concept/claim, formulation, and efficacy)—are likely to "break out" in the near future. Breakout events are labeled using Tukey's IQR outlier method applied to week-over-week search-volume growth rates within each category, avoiding an arbitrary threshold. Logistic regression and gradient-boosting classifiers (XGBoost) are trained on pre-breakout features (recent growth rate, volatility, seasonal deviation) and backtested on a held-out future period. In addition to overall predictive performance, this study compares predictability and volatility across the four keyword categories to answer whether some categories of cosmetics trends are inherently more predictable than others. A supplementary validation step links predicted breakout keywords to actual best-selling product ingredient lists collected from a major Korean beauty retailer (Oliveyoung), illustrating practical relevance for R&D and marketing teams.
 
 **Key Words**: Cosmetics Trend, Search Trend Data, Breakout Prediction, Big Data, Machine Learning, Naver Trend
 
@@ -107,7 +107,7 @@ Rapid shifts in consumer attention toward specific cosmetics ingredients, produc
 
 ### 3.1 데이터 수집
 
-**(1) 메인 시계열 데이터**: 네이버 검색어 트렌드(Search Trend) API(NAVER API HUB)를 통해 키워드별 월간 상대 검색량(0~100 정규화)을 수집한다. 공식 API로 국내 검색 대표성이 높고 과거 데이터 확보가 용이하며 크롤링 리스크가 없다는 장점이 있다(월 50,000회 무료 쿼터, 최대 5개 그룹×그룹당 20개 키워드). API 등록 및 호출 테스트는 완료된 상태이다.
+**(1) 메인 시계열 데이터**: 네이버 검색어 트렌드(Search Trend) API(NAVER API HUB)를 통해 키워드별 **주간(week)** 상대 검색량(0~100 정규화)을 수집한다. 조기예측(RQ1)이라는 연구 목적상 월 단위보다 세밀한 신호를 포착할 수 있는 주 단위를 채택했다. 공식 API로 국내 검색 대표성이 높고 과거 데이터 확보가 용이하며 크롤링 리스크가 없다는 장점이 있다(월 50,000회 무료 쿼터, 최대 5개 그룹×그룹당 20개 키워드). 69개 후보 키워드 중 67개의 2020-12-28~2026-09-28 구간 데이터 수집을 완료했다(나머지 2개는 네이버 데이터랩 자체에 검색 데이터가 없어 제외).
 
 **(2) 키워드 리스트 확보**: 성분은 식약처 화장품 성분사전·올리브영 전성분 페이지에서, 컨셉·클레임은 올리브영 상품 필터 태그(저자극, 비건 등)에서, 제형은 올리브영 카테고리 분류(앰플/세럼/크림/쿠션 등)에서, 효능키워드는 올리브영 카테고리·태그(모공, 각질, 리프팅 등)에서 수집한다.
 
@@ -117,7 +117,7 @@ Rapid shifts in consumer attention toward specific cosmetics ingredients, produc
 
 ### 3.2 Breakout 라벨링 기준
 
-키워드별 전월 대비 검색량 증가율(growth rate)을 계산하고, **카테고리(성분/컨셉·클레임/제형/효능)별로 그룹화**하여 Tukey's IQR 이상치 탐지법(Q3 + 1.5×IQR을 초과하는 시점)을 적용해 breakout 여부를 이진 라벨링한다.
+키워드별 **전주 대비** 검색량 증가율(growth rate)을 계산하고, **카테고리(성분/컨셉·클레임/제형/효능)별로 그룹화**하여 Tukey's IQR 이상치 탐지법(Q3 + 1.5×IQR을 초과하는 시점)을 적용해 breakout 여부를 이진 라벨링한다. 아울러 네이버 데이터랩 주간 데이터는 수집 시점에 아직 끝나지 않은 마지막 주가 부분 집계된 값으로 반환되는 문제가 있어, 요일별 검색량 패턴이 불균등해 비례 보정이 오히려 편향을 만들 수 있다는 판단에 따라 "그 주의 종료일이 수집 시점 이전인, 완전히 끝난 주"만 분석에 사용하는 규칙을 적용했다.
 
 이 방법을 채택한 근거는 다음과 같다. 첫째, 절대적 증가율 임계치(예: "6개월 평균 대비 200% 증가")는 근거가 부족한 임의 기준이며, Google Trends의 공식 breakout 정의(검색량 5,000%+ 증가)는 네이버 트렌드가 이미 0~100으로 정규화된 상대값이라는 점에서 그대로 적용할 근거가 없어 모두 기각했다. 둘째, IQR 기반 이상치 탐지는 통계학에서 널리 검증된 표준 기법이며, 카테고리별 분포에 따라 자동으로 임계치가 조정되는 적응형(adaptive) 기준이라 임의성 논란을 줄인다. 셋째, 원 수준값이 아닌 증가율(differenced) 기반이라는 점에서, 두 비정상 시계열이 우연히 유사한 추세를 보여도 실제로는 무관할 수 있다는 가성회귀 위험(문태남, 2017; Yule, 1926)을 완화하는 효과가 있다. 넷째, 동일한 IQR 이상치 탐지 공식이 국내 유사 연구(김병완, 2021)에서도 실제 채택된 선례가 있다.
 
@@ -146,9 +146,9 @@ df = df.groupby("category", group_keys=False).apply(flag_outlier)
 
 라벨링 시점 T 이전의 데이터만을 사용해 미래 정보 누수를 방지하며, 다음 feature를 구성한다.
 
-- **최근 N개월 검색량 증가율(기울기)**: N을 임의로 고정하지 않고, 서주연(2018)의 교차상관(cross-correlation) 기반 최적 시차 선택 방법을 응용하여 breakout 라벨과 가장 상관관계가 높은 시차를 데이터 기반으로 선택한다.
-- 검색량 변동성(분산)
-- 계절성 대비 이례적 상승 여부
+- **최근 N주 검색량 증가율(기울기)**: N을 임의로 고정하지 않고, 서주연(2018)의 교차상관(cross-correlation) 기반 최적 시차 선택 방법을 응용하여, 후보 시차 1~26주(약 6개월에 해당하는 범위) 구간에서 growth_rate를 L주 과거로 이동(shift)한 값과 breakout 라벨 간 상관관계가 가장 높은 시차를 카테고리별로 데이터 기반 선택한다(성분 14주/제형 22주/컨셉·클레임 7주/효능 24주로 선택됨).
+- **검색량 변동성(분산)**: 위에서 선택한 카테고리별 N주 윈도를 그대로 사용해, 현재 시점 이전 N주 구간의 growth_rate 표준편차로 계산한다(현재 시점 값은 제외해 미래 정보 누수를 방지).
+- **계절성 대비 이례적 상승 여부**: 동일 ISO 주차(예: 매년 "9월 넷째 주")의 과거 연도 검색 비율 중앙값을 계절 기준선으로 삼고, 현재 비율이 그 기준선 대비 몇 % 벗어났는지로 계산한다. 기준선은 반드시 해당 연도보다 이전 연도의 값으로만 계산해 미래 정보 누수를 방지한다.
 - 카테고리(성분/컨셉/제형/효능) 자체를 feature 또는 그룹 변수로 활용
 
 ### 3.4 예측 모델 설계
@@ -225,7 +225,7 @@ RQ2("성분/컨셉·클레임/제형/효능 네 카테고리 간 트렌드 변�
 - R&D·마케팅 실무 관점에서 어떤 카테고리의 트렌드를 더 신뢰도 높게 조기 포착할 수 있는지에 대한 실무적 시사점 제시.
 
 ### 5.2 한계 및 향후 연구 방향 (예상되는 한계, 현재 인지 중)
-- 네이버 트렌드가 월간(monthly) 단위 데이터라는 세밀도의 한계 — 서주연(2018)의 제언처럼 향후 주간·일간 단위 데이터 활용을 향후 과제로 제시.
+- 네이버 트렌드를 주간(weekly) 단위로 수집했으나 더 세밀한 일간(daily) 단위는 아니라는 한계 — 서주연(2018)의 제언처럼 향후 일간 단위 데이터 활용을 향후 과제로 제시. 아울러 수집 기간 자체가 약 5.7년(2020-12-28~2026-09)으로 짧아, 계절성 feature의 "과거 연도" 비교 기준을 통계적으로 더 안정적인 2개 이상으로 두면 학습 가능한 데이터가 거의 남지 않는 제약이 실제로 발견되어 1개 이상으로 완화한 바 있다 — 수집 기간이 길어지면 더 견고한 계절성 추정이 가능할 것이다.
 - 올리브영 전성분 데이터가 Cloudflare 봇 탐지로 소규모 수동 수집에 그친 한계 — 김병완(2021)의 "표본 확대 필요"라는 한계와 유사한 맥락에서, 데이터 접근성이 개선되면 더 큰 규모의 검증이 가능함을 향후 연구로 제시.
 - 국내(네이버) 검색 데이터에 한정된 분석 범위 — 허준석(2018)이 지적한 "국내 프로그램 한계로 분석 범위가 국내로 한정됨"과 유사한 한계.
 - 이진분류라는 단순한 문제 설정의 한계 — 국제 연구의 최신 흐름(BuzzProphet, 2025)은 회귀·LLM 기반 정성적 추론 결합으로 나아가고 있음. 본 연구는 해석 가능성과 실무 활용성을 위해 이진분류를 의도적으로 택했으나, 향후 연구에서는 breakout "여부"뿐 아니라 "강도"까지 예측하는 회귀 확장을 고려할 수 있음.
