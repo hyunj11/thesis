@@ -292,3 +292,13 @@ df.to_csv("naver_trend_labeled.csv", index=False, encoding="utf-8-sig")
 - SHAP과 전조 궤적 두 분석의 방향이 서로 정확히 일치 — "breakout 직전 공통 신호는 성장률이 아니라 변동성 급증 + 계절 평균 대비 저활동"이라는 결론을 교차검증.
 - THESIS_DRAFT.md에 §4.5(신규)로 반영, 5.1 실무적 시사점에 한 문단 추가, 교수님 확인사항 #13 추가(이 분석이 사후 해석(post-hoc)이라 "새로운 예측력 추가"로 과장되지 않도록 §4.5 마지막 문단에 한계 명시, Ⅳ장이 §4.4·4.5 두 보조 분석으로 늘어진 것에 대한 분량 검토 요청).
 - 산출 파일: `shap_global_summary.csv`, `shap_by_category.csv`, `pre_breakout_trajectory.csv`.
+
+## 진행 상황 (주기적 후보군 갱신 파이프라인 1회 실행 + 전체 재검증, 2026-10-06)
+- 사용자가 "주기적으로 선별된 후보지를 추가"하는 운영 방안을 제안 → `discover_new_keyword_candidates.py` 작성(올리브영 검색결과 필터 `주요성분/제품특징/주요기능/기능`을 `attribute-name`/`attribute-value` 속성으로 파싱, Cloudflare 차단 시 playwright로 자동 전환). 이 세션은 egress 차단으로 직접 테스트 불가 → 사용자가 로컬에서 실행해 공유한 debug HTML로 실제 selector를 확정·검증.
+- 1차 실행 결과 22개 신규 발견. 수동으로 3.1(3) 동음이의어 검증을 적용해 14개를 중복/비키워드성 파싱 결과(보통·기획상품 등 등급·포장값, "리프팅/탄력" 같은 "/" 결합값 분리 버그 등)로 제외하고 9개(스쿠알렌·피부광채·잡티·올인원 스킨케어·알러지테스트·아미노산 성분·타우린 화장품·쿨링 효과·시카케어)를 `naver_keywords_final.csv`에 추가. "/" 파싱 버그는 `parse_facets()`에 분리 로직 추가해 수정.
+- 사용자가 로컬에서 9개를 `collect_naver_trends.py`로 2016-01-01부터 백필 수집 후 푸시(76개 키워드, 38,113행). "타우린 화장품"은 10년간 7주치 데이터뿐으로 극히 희소하지만, 기존에도 "무향료"(21)·"피부과테스트"(59) 같은 희소 키워드가 있었고 5.2절이 "저검색량 제외 시 오히려 성능 하락"이라는 결론을 이미 냈던 터라 제외하지 않고 그대로 포함.
+- 전체 파이프라인 재실행(`label_breakouts.py`→`select_lag_window.py`→`compute_volatility.py`→`compute_seasonality.py`→`compute_category_volatility.py`→`baseline_model.py`/`logistic_regression_model.py`/`xgboost_model.py`) + 5.2절 모든 `check_*.py`·`sustained_trend_check.py`·`validate_with_oliveyoung_snapshot*.py` 재실행.
+- **핵심 결과**: lag window가 컨셉·클레임(22→11주)·효능(11주, 거의 동일)로 바뀌었고, XGBoost `full` 평균 AUC가 **0.773→0.786**로 개선(성분0.701/제형0.750/컨셉·클레임0.828/효능0.867). LR full 평균도 0.713으로 개선.
+- **버그 발견·수정**: `check_lag_selection_leakage.py`의 `FULL_DATA_LAGS`/`REPORTED_AUC` 하드코딩 상수가 10년 재수집 이전(5.7년 데이터 시절) 값(14/22/7/24)으로 그대로 남아있던 것을 발견 — 핵심 비교(trainonly vs full, 둘 다 매번 새로 계산됨)에는 영향 없었지만 표시용 상수라 현재 값(7/22/11/11, LR full AUC)으로 수정.
+- **주목할 재검증 결과 변화**: 제형 카테고리는 이번에 신규 키워드가 전혀 추가되지 않았는데도(15개 그대로) `check_sample_size_stability.py`(표본 재추출 std 최대)와 `check_keyword_holdout_generalization.py`(신규 키워드 일반화 격차 최대)에서 기존에 "가장 안정적"이던 위치가 "가장 불안정"으로 뒤바뀜 — 15개라는 절대 표본 크기 자체가 재추출 결과를 작은 변화에도 크게 흔든다는 근거로 해석. `check_lag_selection_leakage.py`도 학습구간 전용 lag 선택 시 AUC 하락폭이 이전(-0.002~+0.002)보다 훨씬 커짐(-0.016~-0.043). `check_xgboost_tuning_sensitivity.py`는 성분만 튜닝 후 AUC가 소폭 하락(-0.003)하는 역방향 사례가 처음 나타남.
+- THESIS_DRAFT.md 전체(§3.1·3.3·4.0~4.5·5.1·5.2, Abstract, 교수님 확인사항 #13 일부 수정 + #14 신규)를 새 수치로 갱신.
