@@ -244,3 +244,8 @@ df.to_csv("naver_trend_labeled.csv", index=False, encoding="utf-8-sig")
 - **XGBoost 하이퍼파라미터 미튜닝 — `check_xgboost_tuning_sensitivity.py`.** 학습구간을 70/30 내부 validation으로 쪼개 소규모 그리드서치(max_depth×learning_rate×n_estimators) 수행 후 재평가. 테스트 AUC가 성분 +0.044·제형 +0.012·효능 +0.019 개선, 컨셉·클레임은 거의 변화 없음(-0.001) — "LR≈XGBoost" 결론은 유지되나 XGBoost가 다소 과소평가됐을 가능성 인정. 5.2절에 새 bullet 추가.
 - **(점검 결과 문제 없음, 본문 미반영)** breakout 사건의 연속주 클러스터링(91.2%가 단일주 사건, multi-week run은 16.3%뿐 — "같은 사건 중복 집계" 우려 기각), 테스트 구간 분기별 breakout 분포(12개 분기에 5.6~13.1%로 고르게 분산 — 특정 매크로 웨이브 쏠림 없음), feature 간 다중공선성(최대 상관 0.36, VIF 문제 수준 아님) — 셋 다 검증했으나 문제 없어 5.2절 intro 문단에 한 줄로만 언급.
 - 새 스크립트: `check_iqr_multiplier_sensitivity.py`, `check_xgboost_tuning_sensitivity.py` (+ 출력 CSV). 기존 `check_sample_size_stability.py`의 `recompute_volatility` 헬퍼를 재사용.
+
+## 진행 상황 (베이스라인 설계 용어 정리, 2026-10-06)
+- 교수님 확인사항 #4("베이스라인 설계를 하나로 통일할지")에 대해, 통상적인 ML/예측 논문 관행을 검토한 결과 "단순 규칙 베이스라인"과 "ablation(growth_only vs full)"은 서로 다른 질문(학습 無 대비 ML 효과 / feature 추가 효과)에 답하는 것이라 통합하지 않고 같이 쓰는 것이 표준임을 확인 — 선례(김병완 2021, 서주연 2018)도 동일 구조.
+- 다만 3.4절이 ablation을 "베이스라인 2(ablation)"라고 표기해 별도 베이스라인 모델처럼 보였던 것을 "본 모델의 ablation 설계"로 용어만 정리(베이스라인은 "베이스라인(규칙 기반)" 하나로 통일). 4.1절은 이미 "베이스라인"과 "ablation 구조의 두 변형"을 분리해 정확히 쓰고 있어 추가 수정 없음.
+- 베이스라인(Top-K 규칙)과 로지스틱회귀 `growth_only`의 AUC가 카테고리별로 완전히 일치했던 현상(§4.1)도 "중복"이 아니라 "두 독립 구현의 교차검증"으로 재해석해 교수님 질문 #4에 반영.
