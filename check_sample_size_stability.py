@@ -11,14 +11,18 @@ breakout 라벨링·full 모델 파이프라인을 재학습시키고, 20회 AUC
 규모 한계 주장이 실증적으로 뒷받침되고, 작으면 그 한계가 과장된 것일 수
 있다는 뜻이다.
 
+2026-10-06: 주 모델을 로지스틱회귀에서 XGBoost로 전환(§4.1)한 데 맞춰, 이
+스크립트도 XGBoost(xgboost_model.py와 동일한 고정 하이퍼파라미터)로
+안정성을 검증하도록 변경했다 — RQ2(카테고리 간 예측가능성 비교)의 근거는
+이제 주 모델인 XGBoost 기준이어야 하기 때문.
+
 사용법:
   python3 check_sample_size_stability.py
 """
 
 import numpy as np
 import pandas as pd
-from sklearn.linear_model import LogisticRegression
-from sklearn.preprocessing import StandardScaler
+from xgboost import XGBClassifier
 
 from baseline_model import add_signal, load_lag_windows, split_backtest
 from logistic_regression_model import add_lagged_seasonal, auc_by_category, build_design_matrix, drop_missing
@@ -71,12 +75,20 @@ def fit_auc(df, lag_by_category):
 
     X_train = build_design_matrix(train, FEATURE_COLS)
     X_test = build_design_matrix(test, FEATURE_COLS).reindex(columns=X_train.columns, fill_value=0)
-    scaler = StandardScaler()
-    model = LogisticRegression(class_weight="balanced", max_iter=1000)
-    model.fit(scaler.fit_transform(X_train), train["is_breakout"])
+
+    y_train = train["is_breakout"].astype(int)
+    n_pos = y_train.sum()
+    n_neg = len(y_train) - n_pos
+    scale_pos_weight = n_neg / n_pos if n_pos > 0 else 1.0
+    model = XGBClassifier(
+        n_estimators=200, max_depth=3, learning_rate=0.05,
+        subsample=0.8, colsample_bytree=0.8,
+        scale_pos_weight=scale_pos_weight, eval_metric="logloss", random_state=42,
+    )
+    model.fit(X_train, y_train)
 
     test = test.copy()
-    test["pred_proba"] = model.predict_proba(scaler.transform(X_test))[:, 1]
+    test["pred_proba"] = model.predict_proba(X_test)[:, 1]
     return auc_by_category(test)
 
 
@@ -107,7 +119,7 @@ def main():
     print()
     summary = result.agg(["mean", "std", "min", "max"]).T
     summary["full_sample_auc"] = pd.Series(
-        {"성분": 0.667366, "제형": 0.743858, "컨셉·클레임": 0.732675, "효능": 0.826594}
+        {"성분": 0.704878, "제형": 0.756398, "컨셉·클레임": 0.811117, "효능": 0.820583}
     )
     print(summary.round(4))
 

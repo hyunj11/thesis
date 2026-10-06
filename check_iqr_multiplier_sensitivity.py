@@ -19,9 +19,8 @@ breakout 비율·모델 성능이 어떻게 달라지는지는 지금까지 검�
 """
 
 import pandas as pd
-from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import roc_auc_score
-from sklearn.preprocessing import StandardScaler
+from xgboost import XGBClassifier
 
 from baseline_model import load_lag_windows, split_backtest
 from check_sample_size_stability import recompute_volatility
@@ -77,12 +76,19 @@ def fit_auc(df, lag_by_category, seasonal_lookup):
 
     X_train = build_design_matrix(train, FEATURE_COLS)
     X_test = build_design_matrix(test, FEATURE_COLS).reindex(columns=X_train.columns, fill_value=0)
-    scaler = StandardScaler()
-    model = LogisticRegression(class_weight="balanced", max_iter=1000)
-    model.fit(scaler.fit_transform(X_train), train["is_breakout"])
+    y_train = train["is_breakout"].astype(int)
+    n_pos = y_train.sum()
+    n_neg = len(y_train) - n_pos
+    scale_pos_weight = n_neg / n_pos if n_pos > 0 else 1.0
+    model = XGBClassifier(
+        n_estimators=200, max_depth=3, learning_rate=0.05,
+        subsample=0.8, colsample_bytree=0.8,
+        scale_pos_weight=scale_pos_weight, eval_metric="logloss", random_state=42,
+    )
+    model.fit(X_train, y_train)
 
     test = test.copy()
-    test["pred_proba"] = model.predict_proba(scaler.transform(X_test))[:, 1]
+    test["pred_proba"] = model.predict_proba(X_test)[:, 1]
     results = {}
     for category, group in test.groupby("category"):
         y = group["is_breakout"].astype(int)

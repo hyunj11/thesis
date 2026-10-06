@@ -9,20 +9,19 @@ lag_selected.csv의 N, full feature셋)으로 재학습·재평가하고 AUC가 
 
 방법: train_end를 2021-12-31 / 2022-06-30 / 2022-12-31(기존 논문 분할) /
 2023-06-30 / 2023-12-31 5개 지점으로 바꿔가며, 각 지점 이전을 학습, 이후
-전체(수집 종료 시점 2026-09-21까지)를 테스트로 사용해 로지스틱회귀 full
-모델을 재학습하고 카테고리별 AUC를 계산한다. lag window(N)는 기존
-lag_selected.csv 값을 그대로 쓴다(이 스크립트는 split 민감도만 검증하는
-것이 목적이며, lag 선택 누수는 check_lag_selection_leakage.py에서 별도
-검증했음).
+전체(수집 종료 시점 2026-09-21까지)를 테스트로 사용해 주 모델(XGBoost,
+2026-10-06 로지스틱회귀에서 전환 — §4.1) full 모델을 재학습하고 카테고리별
+AUC를 계산한다. lag window(N)는 기존 lag_selected.csv 값을 그대로 쓴다
+(이 스크립트는 split 민감도만 검증하는 것이 목적이며, lag 선택 누수는
+check_lag_selection_leakage.py에서 별도 검증했음).
 
 사용법:
   python3 check_walkforward_splits.py
 """
 
 import pandas as pd
-from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import roc_auc_score
-from sklearn.preprocessing import StandardScaler
+from xgboost import XGBClassifier
 
 from baseline_model import add_signal, load_features, load_lag_windows
 from logistic_regression_model import add_lagged_seasonal, build_design_matrix, drop_missing
@@ -40,12 +39,20 @@ def fit_auc_for_split(df, train_end):
 
     X_train = build_design_matrix(train, FEATURE_COLS)
     X_test = build_design_matrix(test, FEATURE_COLS).reindex(columns=X_train.columns, fill_value=0)
-    scaler = StandardScaler()
-    model = LogisticRegression(class_weight="balanced", max_iter=1000)
-    model.fit(scaler.fit_transform(X_train), train["is_breakout"])
+
+    y_train = train["is_breakout"].astype(int)
+    n_pos = y_train.sum()
+    n_neg = len(y_train) - n_pos
+    scale_pos_weight = n_neg / n_pos if n_pos > 0 else 1.0
+    model = XGBClassifier(
+        n_estimators=200, max_depth=3, learning_rate=0.05,
+        subsample=0.8, colsample_bytree=0.8,
+        scale_pos_weight=scale_pos_weight, eval_metric="logloss", random_state=42,
+    )
+    model.fit(X_train, y_train)
 
     test = test.copy()
-    test["pred_proba"] = model.predict_proba(scaler.transform(X_test))[:, 1]
+    test["pred_proba"] = model.predict_proba(X_test)[:, 1]
 
     results = {}
     for category, group in test.groupby("category"):
