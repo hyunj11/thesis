@@ -13,18 +13,16 @@ RESEARCH_PLAN.md "3) Feature 설계"의 세 번째 항목을 구현한다.
     삼고, 실제 ratio가 이 기준선 대비 얼마나 벗어났는지를 feature로 쓴다.
   - 미래 정보 누수 방지: 기준선은 반드시 **해당 연도보다 이전 연도**의 같은
     ISO 주차 값들로만 계산한다(같은 해 다른 주나 미래 연도는 제외).
-  - 표본 신뢰성: 과거 동일 ISO 주차 관측치가 1개 미만이면(비교할 과거 연도가
-    전혀 없으면) 기준선을 NaN으로 남긴다.
-    (최초 설계는 "2개 이상" 요구였으나, 수집 기간이 2020-12-28~현재로
-    약 5.7년뿐이라 그 기준으로는 2023년 이전 데이터 전체가 NaN이 되어
-    버렸다 — 2023년 이전은 "과거 연도가 2개 이상"인 ISO 주차가 사실상
-    없기 때문. 그 결과 백테스팅 학습 구간(~2022)에 유효한 계절 feature가
-    전혀 남지 않아 모델 학습 자체가 불가능해지는 문제를 2026-10-05
-    logistic_regression_model.py 작업 중 발견 → "1개 이상"으로 완화.
-    과거 연도가 1개뿐이면 중앙값이 그 해 값 그대로가 되어 중앙값의 안정성은
-    떨어지지만, 여전히 엄격하게 T 시점보다 이전 연도의 값만 쓰므로 미래
-    정보 누수는 없다. 데이터 수집 기간이 짧다는 한계로 인한 트레이드오프이며
-    Ⅴ장 한계점에서 함께 언급 예정.)
+  - 표본 신뢰성: 과거 동일 ISO 주차 관측치가 **2개 미만**이면(비교할 과거
+    연도가 2개 미만이면) 기준선을 NaN으로 남긴다.
+    (중간 경과: 최초 설계는 "2개 이상"이었으나, 수집 기간이 2020-12-28~
+    현재로 약 5.7년뿐이던 시점(2026-10-05)에는 그 기준으로 학습 구간
+    (~2022)에 유효한 계절 feature가 전혀 남지 않아 "1개 이상"으로
+    한시적으로 완화했었다. 2026-10-06 네이버 데이터랩 수집 시작일을
+    2016-01-01로 앞당겨 재수집한 뒤(약 10년 치 확보), 과거 연도 2개
+    이상 조건을 만족하는 행이 전체의 80%(28,147/35,102)로 늘어나
+    원래 설계대로 "2개 이상"으로 되돌렸다 — 중앙값이 단일 관측치가
+    아니라 최소 2개 관측치 기반이 되어 안정성이 개선됐다.)
   - seasonal_deviation_pct = (ratio_t - 계절 기준선) / 계절 기준선 * 100
     (기준선 대비 몇 % 위/아래인지). 기준선이 0이면(검색 비율 자체가 0) 계산
     불가로 NaN 처리.
@@ -54,7 +52,7 @@ def seasonal_baseline_for_keyword(group):
         past = group[
             (group["iso_week"] == row["iso_week"]) & (group["iso_year"] < row["iso_year"])
         ]
-        if len(past) >= 1:
+        if len(past) >= 2:
             baselines.append(past["ratio"].median())
         else:
             baselines.append(float("nan"))
@@ -85,7 +83,7 @@ def main():
     df = compute_seasonality(df)
 
     n_available = int(df["seasonal_deviation_pct"].notna().sum())
-    print(f"seasonal_deviation_pct 계산 가능 행(과거 동일 ISO주차 1회 이상): {n_available} / {len(df)}")
+    print(f"seasonal_deviation_pct 계산 가능 행(과거 동일 ISO주차 2회 이상): {n_available} / {len(df)}")
     print(df.groupby("category")["seasonal_deviation_pct"].agg(["count", "mean", "std"]))
 
     df.to_csv(args.output, index=False, encoding="utf-8-sig")

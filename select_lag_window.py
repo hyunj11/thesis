@@ -13,6 +13,11 @@ naver_trend_labeled.csv를 바탕으로 feature 설계에 쓸 lag window(N주)�
   - 미래 정보 누수 방지: growth_rate_{t-L} (L>=1, 반드시 과거 시점)과
     is_breakout_t (현재 시점의 라벨)를 비교한다. 같은 시점(L=0)은 라벨
     자체가 growth_rate로부터 정의되므로 순환 논리가 되어 제외.
+  - 하한 2주(L=1 제외): 선택된 N은 "signal"뿐 아니라 compute_volatility.py의
+    변동성 계산 윈도 크기로도 그대로 재사용되는데, 표준편차는 최소 2개
+    시점이 있어야 정의된다(1개 시점의 표준편차는 항상 NaN). 2016-01부터
+    데이터를 재수집(2026-10-06)해 상관관계가 L=1에서 가장 높게 나오는
+    카테고리가 생겨 이 문제가 실제로 발생했음을 확인하고 하한을 추가했다.
   - 카테고리(성분/컨셉·클레임/제형/효능)별로 따로 계산하는 이유: 라벨링
     단계(Tukey IQR)와 동일하게 RQ2(카테고리 간 차이) 설계를 따름 — "가장
     설명력 높은 시차"도 카테고리마다 다를 수 있다고 봄.
@@ -33,7 +38,8 @@ import argparse
 import numpy as np
 import pandas as pd
 
-MAX_LAG_WEEKS = 26  # RESEARCH_PLAN.md 3) Feature 설계: 1~26주(약 6개월) 탐색 범위
+MIN_LAG_WEEKS = 2  # 변동성(표준편차) 계산에 최소 2개 시점 필요 (2026-10-06 추가)
+MAX_LAG_WEEKS = 26  # RESEARCH_PLAN.md 3) Feature 설계: 2~26주(약 6개월) 탐색 범위
 
 
 def load_labeled(path="naver_trend_labeled.csv"):
@@ -47,7 +53,7 @@ def cross_correlation_by_lag(df, max_lag):
     rows = []
     for category, cat_df in df.groupby("category"):
         target = cat_df["is_breakout"]
-        for lag in range(1, max_lag + 1):
+        for lag in range(MIN_LAG_WEEKS, max_lag + 1):
             lagged = cat_df.groupby("keyword")["growth_rate"].shift(lag)
             valid = lagged.notna() & target.notna()
             n = int(valid.sum())
