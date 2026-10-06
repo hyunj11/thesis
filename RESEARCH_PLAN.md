@@ -249,3 +249,13 @@ df.to_csv("naver_trend_labeled.csv", index=False, encoding="utf-8-sig")
 - 교수님 확인사항 #4("베이스라인 설계를 하나로 통일할지")에 대해, 통상적인 ML/예측 논문 관행을 검토한 결과 "단순 규칙 베이스라인"과 "ablation(growth_only vs full)"은 서로 다른 질문(학습 無 대비 ML 효과 / feature 추가 효과)에 답하는 것이라 통합하지 않고 같이 쓰는 것이 표준임을 확인 — 선례(김병완 2021, 서주연 2018)도 동일 구조.
 - 다만 3.4절이 ablation을 "베이스라인 2(ablation)"라고 표기해 별도 베이스라인 모델처럼 보였던 것을 "본 모델의 ablation 설계"로 용어만 정리(베이스라인은 "베이스라인(규칙 기반)" 하나로 통일). 4.1절은 이미 "베이스라인"과 "ablation 구조의 두 변형"을 분리해 정확히 쓰고 있어 추가 수정 없음.
 - 베이스라인(Top-K 규칙)과 로지스틱회귀 `growth_only`의 AUC가 카테고리별로 완전히 일치했던 현상(§4.1)도 "중복"이 아니라 "두 독립 구현의 교차검증"으로 재해석해 교수님 질문 #4에 반영.
+
+## 진행 상황 (학습 데이터 1년 문제 — 실제 수정, 2026-10-06)
+- 사용자 피드백("2022년 한 해만으로 학습한 건 좀 에바일듯")에 따라, 교수님 확인사항 #10에서 발견만 하고 넘겼던 "학습 구간이 실질적으로 2022년 한 해(3,200행)" 문제를 실제로 해결했다.
+- **근본 원인**: `full` feature셋이 요구하는 lag 윈도(최대 24주)와 계절 기준선("과거 연도 1개 이상")이 동시에 충족되는 구간이 2022-01부터만 존재해, 계절편차 NaN 행을 통째로 버리면 학습이 1년치로 줄어듦.
+- **해결책(검증 후 채택)**: signal·volatility는 유효하지만 계절편차만 NaN인 행을 버리지 않고, 계절편차를 0(중립값 — "아직 계산 불가 = 이례적 편차 근거 없음")으로 채워 학습에 포함. `check_seasonal_impute_extension.py`로 먼저 검증: 학습 3,200행→5,453행(2022-01~2022-12 → 2021-02~2022-12)로 확장되는데 테스트 AUC 변화는 -0.001~+0.002로 사실상 無— "공짜 개선".
+- **실제 파이프라인 반영**: `baseline_model.py`에 `prepare_full_feature_rows()` 공유 헬퍼 추가. `logistic_regression_model.py`에 `drop_missing()` 헬퍼 추가(full 모델엔 완화 규칙, growth_only엔 기존 방식 그대로 적용)하고 `xgboost_model.py`도 이를 재사용하도록 수정. 두 모델을 재실행해 `logistic_regression_results.csv`/`xgboost_results.csv`를 갱신.
+- **새 핵심 결과**: full AUC — 성분 0.659→0.667(LR)/0.648→0.691(XGB), 제형 0.745→0.744/0.714→0.724, 컨셉·클레임 0.734→0.733/0.746→0.747, 효능 0.825→0.827/0.813→0.813(변화없음). 카테고리 간 순위는 LR·XGB 모두 기존과 완전히 동일하게 유지됨(성분<컨셉·클레임<제형<효능 LR, 성분<제형<컨셉·클레임<효능 XGB) — 결론을 뒤집는 변화는 없었음.
+- **연쇄 반영**: 이 full 모델 재학습에 의존하는 모든 5.2절 검증 스크립트(`check_lag_selection_leakage.py`, `check_walkforward_splits.py`, `check_iqr_multiplier_sensitivity.py`, `check_xgboost_tuning_sensitivity.py`, `check_keyword_holdout_generalization.py`, `check_low_volume_sensitivity.py`, `sustained_trend_check.py`, `check_regression_framing.py`, `check_sample_size_stability.py`)도 같은 `drop_missing`/완화 규칙을 쓰도록 수정 후 재실행했고, THESIS_DRAFT.md의 해당 수치를 전부 새 결과로 교체함. 모든 스크립트에서 결론의 방향(어떤 가설이 지지/반박됐는지)은 전혀 바뀌지 않았고 소수점 수준의 수치만 갱신됨.
+- **영향 없음으로 확인**: `check_resolution_sensitivity.py`(모델 미사용), `validate_with_oliveyoung_snapshot*.py`(실제 라벨 기준, 모델 예측 미사용), `predict_next_breakouts.py`(본문에 인용되지 않는 탐색적 스크립트, 의도적으로 미수정).
+- 교수님 확인사항 #10을 "발견"에서 "발견 → 실제 수정 완료"로 갱신. 근본적 해결책(API로 2016년 등 더 이른 시점부터 재수집)은 이 세션에 API 키가 없어 못 했고, 향후 과제로 남김.

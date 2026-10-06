@@ -21,7 +21,7 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.preprocessing import StandardScaler
 
 from baseline_model import add_signal, load_lag_windows, split_backtest
-from logistic_regression_model import add_lagged_seasonal, auc_by_category, build_design_matrix
+from logistic_regression_model import add_lagged_seasonal, auc_by_category, build_design_matrix, drop_missing
 
 FEATURE_COLS = ["signal", "volatility", "seasonal_deviation_pct_lag1"]
 N_DRAWS = 20
@@ -64,8 +64,8 @@ def fit_auc(df, lag_by_category):
     df = add_signal(df, lag_by_category)
     df = add_lagged_seasonal(df)
     train, test = split_backtest(df)
-    train = train.dropna(subset=FEATURE_COLS + ["is_breakout"])
-    test = test.dropna(subset=FEATURE_COLS + ["is_breakout"])
+    train = drop_missing(train, FEATURE_COLS)
+    test = drop_missing(test, FEATURE_COLS)
     if train["is_breakout"].nunique() < 2 or len(test) == 0:
         return None
 
@@ -107,7 +107,7 @@ def main():
     print()
     summary = result.agg(["mean", "std", "min", "max"]).T
     summary["full_sample_auc"] = pd.Series(
-        {"성분": 0.659156, "제형": 0.745129, "컨셉·클레임": 0.734491, "효능": 0.825055}
+        {"성분": 0.667366, "제형": 0.743858, "컨셉·클레임": 0.732675, "효능": 0.826594}
     )
     print(summary.round(4))
 

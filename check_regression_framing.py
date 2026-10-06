@@ -26,7 +26,7 @@ from sklearn.linear_model import LinearRegression, LogisticRegression
 from sklearn.metrics import r2_score, roc_auc_score
 from sklearn.preprocessing import StandardScaler
 
-from baseline_model import add_signal, load_features, load_lag_windows, split_backtest
+from baseline_model import CORE_FULL_COLS, SEASONAL_COL, add_signal, load_features, load_lag_windows, split_backtest
 from logistic_regression_model import add_lagged_seasonal, build_design_matrix
 
 FEATURE_COLS = ["signal", "volatility", "seasonal_deviation_pct_lag1"]
@@ -49,8 +49,12 @@ def main():
     df = add_lagged_seasonal(df)
 
     train, test = split_backtest(df)
-    train = train.dropna(subset=FEATURE_COLS + ["is_breakout", "growth_rate"])
-    test = test.dropna(subset=FEATURE_COLS + ["is_breakout", "growth_rate"])
+    # 계절편차 NaN -> 0 완화(baseline_model.prepare_full_feature_rows, §5.2)를
+    # growth_rate도 함께 요구하는 이 스크립트에 맞게 일반화.
+    train = train.dropna(subset=CORE_FULL_COLS + ["is_breakout", "growth_rate"]).copy()
+    train[SEASONAL_COL] = train[SEASONAL_COL].fillna(0)
+    test = test.dropna(subset=CORE_FULL_COLS + ["is_breakout", "growth_rate"]).copy()
+    test[SEASONAL_COL] = test[SEASONAL_COL].fillna(0)
 
     X_train = build_design_matrix(train, FEATURE_COLS)
     X_test = build_design_matrix(test, FEATURE_COLS).reindex(columns=X_train.columns, fill_value=0)

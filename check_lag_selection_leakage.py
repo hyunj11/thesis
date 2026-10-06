@@ -28,6 +28,7 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import roc_auc_score
 from sklearn.preprocessing import StandardScaler
 
+from logistic_regression_model import drop_missing
 from select_lag_window import cross_correlation_by_lag, select_best_lag
 
 TRAIN_END = "2022-12-31"
@@ -35,7 +36,7 @@ TEST_START = "2023-01-01"
 MAX_LAG = 26
 
 FULL_DATA_LAGS = {"성분": 14, "제형": 22, "컨셉·클레임": 7, "효능": 24}
-REPORTED_AUC = {"성분": 0.659156, "제형": 0.745129, "컨셉·클레임": 0.734491, "효능": 0.825055}
+REPORTED_AUC = {"성분": 0.667366, "제형": 0.743858, "컨셉·클레임": 0.732675, "효능": 0.826594}
 
 
 def load_labeled(path="naver_trend_labeled.csv"):
@@ -79,8 +80,8 @@ def fit_auc(df, lag_by_category, seasonal_lookup):
     df = df.merge(seasonal_lookup, on=["keyword", "period"], how="left")
 
     feature_cols = ["signal", "volatility", "seasonal_deviation_pct_lag1"]
-    train = df[df["period"] <= TRAIN_END].dropna(subset=feature_cols + ["is_breakout"])
-    test = df[df["period"] >= TEST_START].dropna(subset=feature_cols + ["is_breakout"])
+    train = drop_missing(df[df["period"] <= TRAIN_END], feature_cols)
+    test = drop_missing(df[df["period"] >= TEST_START], feature_cols)
 
     X_train = build_design_matrix(train, feature_cols)
     X_test = build_design_matrix(test, feature_cols).reindex(columns=X_train.columns, fill_value=0)

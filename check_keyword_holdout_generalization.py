@@ -30,7 +30,7 @@ from sklearn.metrics import roc_auc_score
 from sklearn.preprocessing import StandardScaler
 
 from baseline_model import add_signal, load_features, load_lag_windows, split_backtest
-from logistic_regression_model import add_lagged_seasonal, build_design_matrix
+from logistic_regression_model import add_lagged_seasonal, build_design_matrix, drop_missing
 
 FEATURE_COLS = ["signal", "volatility", "seasonal_deviation_pct_lag1"]
 N_DRAWS = 10
@@ -55,10 +55,8 @@ def main():
             n_holdout = max(1, round(len(kws) * HOLDOUT_FRACTION))
             holdout_keywords.update(rng.choice(kws, size=n_holdout, replace=False))
 
-        train = train_all[~train_all["keyword"].isin(holdout_keywords)].dropna(
-            subset=FEATURE_COLS + ["is_breakout"]
-        )
-        test = test_all.dropna(subset=FEATURE_COLS + ["is_breakout"]).copy()
+        train = drop_missing(train_all[~train_all["keyword"].isin(holdout_keywords)], FEATURE_COLS)
+        test = drop_missing(test_all, FEATURE_COLS)
         test_seen = test[~test["keyword"].isin(holdout_keywords)]
         test_new = test[test["keyword"].isin(holdout_keywords)]
 

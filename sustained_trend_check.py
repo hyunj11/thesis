@@ -30,6 +30,7 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.preprocessing import StandardScaler
 
 from baseline_model import add_signal, load_lag_windows, split_backtest
+from baseline_model import CORE_FULL_COLS, SEASONAL_COL
 from logistic_regression_model import add_lagged_seasonal, auc_by_category, build_design_matrix
 
 FEATURE_COLS = ["signal", "volatility", "seasonal_deviation_pct_lag1"]
@@ -61,10 +62,19 @@ def add_sustained_label(df):
     return df
 
 
+def prepare(df, label_col):
+    # baseline_model.prepare_full_feature_rows와 동일한 결측 완화 규칙(계절편차
+    # NaN -> 0)을 label_col이 is_breakout이 아닌 경우(sustained_trend)에도
+    # 적용할 수 있도록 일반화한 버전(§5.2 "수집 기간" 항목 참고).
+    df = df.dropna(subset=CORE_FULL_COLS + [label_col]).copy()
+    df[SEASONAL_COL] = df[SEASONAL_COL].fillna(0)
+    return df
+
+
 def fit_and_auc(df, label_col):
     train, test = split_backtest(df)
-    train = train.dropna(subset=FEATURE_COLS + [label_col])
-    test = test.dropna(subset=FEATURE_COLS + [label_col])
+    train = prepare(train, label_col)
+    test = prepare(test, label_col)
 
     X_train = build_design_matrix(train, FEATURE_COLS)
     X_test = build_design_matrix(test, FEATURE_COLS).reindex(columns=X_train.columns, fill_value=0)

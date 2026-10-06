@@ -25,7 +25,7 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.preprocessing import StandardScaler
 
 from baseline_model import TEST_END, TEST_START, TRAIN_END, add_signal, load_lag_windows, split_backtest
-from logistic_regression_model import add_lagged_seasonal, auc_by_category, build_design_matrix
+from logistic_regression_model import add_lagged_seasonal, auc_by_category, build_design_matrix, drop_missing
 
 FEATURE_COLS = ["signal", "volatility", "seasonal_deviation_pct_lag1"]
 
@@ -66,8 +66,8 @@ def evaluate_auc(df, lag_by_category):
     df = add_signal(df, lag_by_category)
     df = add_lagged_seasonal(df)
     train, test = split_backtest(df)
-    train = train.dropna(subset=FEATURE_COLS + ["is_breakout"])
-    test = test.dropna(subset=FEATURE_COLS + ["is_breakout"])
+    train = drop_missing(train, FEATURE_COLS)
+    test = drop_missing(test, FEATURE_COLS)
     if train["is_breakout"].nunique() < 2 or len(test) == 0:
         return None
 

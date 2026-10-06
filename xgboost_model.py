@@ -39,13 +39,14 @@ from logistic_regression_model import (
     add_lagged_seasonal,
     auc_by_category,
     build_design_matrix,
+    drop_missing,
     precision_recall_at_k,
 )
 
 
 def fit_and_predict(train, test, feature_cols):
-    train = train.dropna(subset=feature_cols + ["is_breakout"])
-    test_valid = test.dropna(subset=feature_cols + ["is_breakout"])
+    train = drop_missing(train, feature_cols)
+    test_valid = drop_missing(test, feature_cols)
 
     X_train = build_design_matrix(train, feature_cols)
     X_test = build_design_matrix(test_valid, feature_cols)

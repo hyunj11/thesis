@@ -28,7 +28,7 @@ from sklearn.metrics import roc_auc_score
 from xgboost import XGBClassifier
 
 from baseline_model import add_signal, load_features, load_lag_windows, split_backtest
-from logistic_regression_model import add_lagged_seasonal, build_design_matrix
+from logistic_regression_model import add_lagged_seasonal, build_design_matrix, drop_missing
 
 FEATURE_COLS = ["signal", "volatility", "seasonal_deviation_pct_lag1"]
 INNER_TRAIN_END = "2021-12-31"
@@ -41,7 +41,7 @@ GRID = {
     "n_estimators": [100, 200, 400],
 }
 
-REPORTED_AUC = {"성분": 0.647989, "제형": 0.713639, "컨셉·클레임": 0.746002, "효능": 0.813319}
+REPORTED_AUC = {"성분": 0.691267, "제형": 0.723939, "컨셉·클레임": 0.747361, "효능": 0.813206}
 # xgboost_model.py full 모델 보고값(기존 결과 CSV 기준)
 
 
@@ -90,12 +90,12 @@ def main():
     df = add_signal(df, lag_by_category)
     df = add_lagged_seasonal(df)
     train_all, test_all = split_backtest(df)
-    train_all = train_all.dropna(subset=FEATURE_COLS + ["is_breakout"])
-    test_all = test_all.dropna(subset=FEATURE_COLS + ["is_breakout"])
+    train_all = drop_missing(train_all, FEATURE_COLS)
+    test_all = drop_missing(test_all, FEATURE_COLS)
 
-    # 전체 학습구간(full feature 기준)이 2022-01~2022-12 단 1년치(3,200행)뿐이라
-    # INNER_TRAIN_END(2021-12-31) 기준으로는 내부 train이 0행이 된다(§5.2
-    # "수집 기간" 항목과 동일한 문제). 날짜 대신 정렬된 비율로 70/30 분할한다.
+    # 계절편차 NaN -> 0 완화(§5.2) 이후에도 내부 validation을 위해 날짜 대신
+    # 정렬된 비율로 70/30 분할한다(날짜 기준 분할은 여전히 연초 구간에서
+    # 내부 train이 작아지는 비대칭이 있을 수 있어 비율 분할이 더 안정적).
     train_sorted = train_all.sort_values("period")
     split_idx = int(len(train_sorted) * 0.7)
     inner_train = train_sorted.iloc[:split_idx]

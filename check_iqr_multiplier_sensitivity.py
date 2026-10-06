@@ -25,7 +25,7 @@ from sklearn.preprocessing import StandardScaler
 
 from baseline_model import load_lag_windows, split_backtest
 from check_sample_size_stability import recompute_volatility
-from logistic_regression_model import add_lagged_seasonal, build_design_matrix
+from logistic_regression_model import add_lagged_seasonal, build_design_matrix, drop_missing
 
 FEATURE_COLS = ["signal", "volatility", "seasonal_deviation_pct_lag1"]
 MULTIPLIERS = [1.0, 1.5, 2.0, 2.5, 3.0]
@@ -70,8 +70,8 @@ def fit_auc(df, lag_by_category, seasonal_lookup):
     df = df.merge(seasonal_lookup, on=["keyword", "period"], how="left")
 
     train, test = split_backtest(df)
-    train = train.dropna(subset=FEATURE_COLS + ["is_breakout"])
-    test = test.dropna(subset=FEATURE_COLS + ["is_breakout"])
+    train = drop_missing(train, FEATURE_COLS)
+    test = drop_missing(test, FEATURE_COLS)
     if train["is_breakout"].nunique() < 2 or len(test) == 0:
         return None
 

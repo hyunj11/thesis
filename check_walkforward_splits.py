@@ -25,15 +25,15 @@ from sklearn.metrics import roc_auc_score
 from sklearn.preprocessing import StandardScaler
 
 from baseline_model import add_signal, load_features, load_lag_windows
-from logistic_regression_model import add_lagged_seasonal, build_design_matrix
+from logistic_regression_model import add_lagged_seasonal, build_design_matrix, drop_missing
 
 FEATURE_COLS = ["signal", "volatility", "seasonal_deviation_pct_lag1"]
 SPLIT_POINTS = ["2021-12-31", "2022-06-30", "2022-12-31", "2023-06-30", "2023-12-31"]
 
 
 def fit_auc_for_split(df, train_end):
-    train = df[df["period"] <= train_end].dropna(subset=FEATURE_COLS + ["is_breakout"])
-    test = df[df["period"] > train_end].dropna(subset=FEATURE_COLS + ["is_breakout"])
+    train = drop_missing(df[df["period"] <= train_end], FEATURE_COLS)
+    test = drop_missing(df[df["period"] > train_end], FEATURE_COLS)
 
     if train["is_breakout"].nunique() < 2 or len(test) == 0:
         return None, len(train), len(test)

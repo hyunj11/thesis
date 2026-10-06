@@ -66,6 +66,34 @@ def split_backtest(df):
     return train, test
 
 
+SEASONAL_COL = "seasonal_deviation_pct_lag1"
+CORE_FULL_COLS = ["signal", "volatility"]
+
+
+def prepare_full_feature_rows(df):
+    """`full` feature셋(signal+volatility+계절편차)을 쓰는 모델이 공통으로
+    적용해야 하는 결측 처리 규칙.
+
+    계절편차는 "과거 연도 1개 이상"이 있어야 계산되는데, 수집 시작일
+    (2020-12-28)로부터 1년이 지나야 충족되므로 그 이전 구간은 전부 NaN이다.
+    signal·volatility까지 전부 유효한 행을 계절편차 NaN이라는 이유만으로
+    통째로 버리면, 학습 구간이 실질적으로 2022-01~2022-12(3,200행, 1년
+    남짓)로 줄어드는 문제가 있었다(§5.2 "수집 기간" 항목, 2026-10-05
+    발견). 이 결측을 **0(= "아직 계절 기준선을 계산할 수 없으므로 이례적
+    편차가 있다고 볼 근거가 없다"는 중립값)으로 채워** 포함시키면, 미래
+    정보를 끌어오는 것이 아니면서도 학습 구간을 2021-02~2022-12로 확장할
+    수 있다(`check_seasonal_impute_extension.py`로 검증: 테스트 AUC 변화
+    -0.001~+0.002로 사실상 無영향, 학습 행은 3,200→5,453으로 확장).
+
+    signal·volatility 자체가 없는 행(lag 윈도 자체가 아직 안 쌓인 극초반
+    구간)은 여전히 제외한다 — 이건 보수적으로 채울 중립값이 없는 "진짜
+    결측"이기 때문이다.
+    """
+    df = df.dropna(subset=CORE_FULL_COLS + ["is_breakout"]).copy()
+    df[SEASONAL_COL] = df[SEASONAL_COL].fillna(0)
+    return df
+
+
 def precision_recall_at_k(test_df, k):
     rows = []
     for (category, period), group in test_df.groupby(["category", "period"]):

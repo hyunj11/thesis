@@ -43,12 +43,14 @@ from sklearn.metrics import roc_auc_score
 from sklearn.preprocessing import StandardScaler
 
 from baseline_model import (
+    SEASONAL_COL,
     TEST_END,
     TEST_START,
     TRAIN_END,
     add_signal,
     load_features,
     load_lag_windows,
+    prepare_full_feature_rows,
     split_backtest,
 )
 
@@ -65,9 +67,18 @@ def build_design_matrix(df, feature_cols):
     return X
 
 
+def drop_missing(df, feature_cols):
+    # full 모델(seasonal 포함)은 baseline_model.prepare_full_feature_rows의
+    # 결측 완화 규칙(계절편차 NaN -> 0)을 적용하고, growth_only처럼 seasonal을
+    # 쓰지 않는 모델은 그대로 전체 feature에 대해 dropna한다.
+    if SEASONAL_COL in feature_cols:
+        return prepare_full_feature_rows(df)
+    return df.dropna(subset=feature_cols + ["is_breakout"]).copy()
+
+
 def fit_and_predict(train, test, feature_cols):
-    train = train.dropna(subset=feature_cols + ["is_breakout"])
-    test_valid = test.dropna(subset=feature_cols + ["is_breakout"])
+    train = drop_missing(train, feature_cols)
+    test_valid = drop_missing(test, feature_cols)
 
     X_train = build_design_matrix(train, feature_cols)
     X_test = build_design_matrix(test_valid, feature_cols)
