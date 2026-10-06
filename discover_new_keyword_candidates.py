@@ -2,26 +2,24 @@
 RESEARCH_PLAN.md의 "주기적 후보군 갱신 파이프라인"(§5.2 "고정 후보군의 한계")
 ① 단계(재스크래핑) + ② 단계(diff)를 구현한다.
 
-⚠️ 중요한 한계(투명하게 밝힘): 이 스크립트는 이 세션(샌드박스)에서는 전혀
-테스트하지 못했다 — 올리브영·식약처 등 외부 도메인이 이 환경의 egress
-proxy에서 전부 403으로 차단되기 때문이다(collect_naver_trends.py/
-collect_google_trends.py와 동일한 제약). 따라서:
-  - 올리브영 검색결과 페이지의 실제 HTML 구조(class명 등)는
-    KEYWORD_CANDIDATES.md에 기록된 과거 관찰(`getSearchMain.do?query=...`의
-    "주요성분"·"제품특징"·"주요기능" 필터)에 근거해 작성했지만, 사이트
-    개편으로 바뀌어 있을 수 있다 — 반드시 로컬에서 먼저
-    `--debug-html`로 실제 HTML을 저장해 CSS selector를 맞게 조정할 것.
-  - 3.1(4)에서 이미 올리브영 랭킹 페이지 수집 시 Cloudflare 봇 탐지에
-    걸렸던 선례가 있다. 아래는 1차로 requests + 브라우저 유사 헤더를
-    시도하고, 차단되면 playwright(헤드리스 브라우저)로 자동 전환한다.
-    로컬에 playwright가 없으면 `pip install playwright` 후
-    `playwright install chromium` 필요.
-  - 식약처(화장품 성분사전) 쪽은 안정적인 공개 URL을 이 자리에서
-    확신 있게 특정할 수 없어(원격 확인 불가), 이번 버전에는 포함하지
-    않았다 — 올리브영 필터만으로도 성분/컨셉·클레임/효능 3개 카테고리의
-    후보 발견은 가능하다(제형은 올리브영 "카테고리" 분류 쪽이라 별도
-    로직 필요, 이번 버전은 미포함). 식약처 쪽은 URL을 직접 확인한 뒤
-    `fetch_mfds_candidates()`에 채워 넣을 것.
+상태(2026-10-06): 이 세션(샌드박스)은 올리브영 도메인이 egress proxy에서
+차단돼 직접 실행할 수 없었으나, 사용자가 로컬 Windows PC에서
+`--debug-html`로 실제 검색결과 페이지(query=화장품)를 받아 공유해줘서
+그 HTML로 parse_facets()를 실제 구조에 맞게 구현·검증했다(아래 참고).
+requests는 Cloudflare로 차단됐고 playwright(헤드리스 브라우저)는 성공함
+— 로컬에 playwright가 없으면 `pip install playwright` 후
+`playwright install chromium` 필요. 실제로 "주요성분/제품특징/주요기능/
+기능" 4개 필터 그룹, 각 10개 값을 정상 파싱해 기존 69개 후보 대비 신규
+26개(스쿠알렌·시카케어·아미노산·타우린 등 진짜 신규 성분과, "진정"처럼
+기존엔 결합형("피부진정")으로만 있던 값이 분리형으로 다시 잡히는 동음이의어
+재검증 필요 사례가 섞여 있음 — 둘 다 3.1(3) 수동 검증으로 가려낼 대상)를
+찾아내는 것까지 확인했다.
+
+식약처(화장품 성분사전) 쪽은 안정적인 공개 URL을 아직 확인하지 못해
+이번 버전에는 포함하지 않았다 — 올리브영 필터만으로도 성분/컨셉·클레임/
+효능 3개 카테고리의 후보 발견은 가능하다(제형은 올리브영 "카테고리"
+분류 쪽이라 별도 로직 필요, 이번 버전은 미포함). 식약처 쪽은 URL을
+확인한 뒤 `fetch_mfds_candidates()`에 채워 넣을 것.
 
 사용법(로컬 Windows/PowerShell, collect_naver_trends.py와 같은 폴더):
   pip install requests beautifulsoup4 playwright
@@ -91,24 +89,24 @@ def fetch_with_playwright(query="화장품"):
 
 def parse_facets(html):
     """
-    ⚠️ 로컬에서 --debug-html로 실제 구조를 먼저 확인하고 이 함수의 selector를
-    맞게 고칠 것. 아래는 KEYWORD_CANDIDATES.md 관찰(필터 영역에 facet 그룹명과
-    체크박스 라벨 텍스트가 존재)에 근거한 추정 구현이며, 실제 class/id명은
-    확인되지 않았다.
+    2026-10-06 실제 오프라인 HTML(oliveyoung_debug.html, 사용자가 로컬에서
+    playwright로 받아 공유)로 구조를 확인해 구현을 확정했다. 체크박스 그룹
+    컨테이너(ul.filter > li > button.chip)를 거치지 않고, 체크박스 각각이
+    attribute-name(필터 그룹명)·attribute-value(필터 값) 속성을 그대로
+    갖고 있어 더 간단·안정적으로 파싱 가능:
+
+      <input ... attribute-name="주요기능" attribute-value="보습" ...>
+
+    FACET_TO_CATEGORY에 없는 그룹명(피부타입 등)은 자동으로 무시된다.
     """
     soup = BeautifulSoup(html, "html.parser")
     facets = {}
-    # 추정: 필터 그룹이 <div class="filter_group"> 안에 그룹명(.filter_tit)과
-    # 체크박스 라벨(label) 목록으로 구성됨 — 실제 구조 확인 후 수정 필요.
-    for group in soup.select(".filter_group"):
-        title_el = group.select_one(".filter_tit")
-        if not title_el:
+    for input_el in soup.select("input[attribute-name][attribute-value]"):
+        facet_name = input_el.get("attribute-name", "").strip()
+        value = input_el.get("attribute-value", "").strip()
+        if facet_name not in FACET_TO_CATEGORY or not value:
             continue
-        facet_name = title_el.get_text(strip=True)
-        if facet_name not in FACET_TO_CATEGORY:
-            continue
-        values = [label.get_text(strip=True) for label in group.select("label") if label.get_text(strip=True)]
-        facets.setdefault(facet_name, set()).update(values)
+        facets.setdefault(facet_name, set()).add(value)
     return facets
 
 
