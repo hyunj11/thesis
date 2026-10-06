@@ -272,3 +272,14 @@ df.to_csv("naver_trend_labeled.csv", index=False, encoding="utf-8-sig")
 - **5.2절 검증 스크립트 중 XGBoost로 전환**: `check_sample_size_stability.py`, `check_walkforward_splits.py`, `check_keyword_holdout_generalization.py`, `check_low_volume_sensitivity.py`, `sustained_trend_check.py`, `check_iqr_multiplier_sensitivity.py` — 전부 기존 로지스틱회귀 대신 xgboost_model.py와 동일한 고정 하이퍼파라미터로 재구현. `check_regression_framing.py`는 "선형회귀 vs 로지스틱회귀"라는 같은 계열 비교가 설계 의도이므로 의도적으로 유지. `check_lag_selection_leakage.py`·`check_xgboost_tuning_sensitivity.py`는 원래부터 모델/하이퍼파라미터 자체가 주제라 로직 변경 없이 새 데이터로만 재실행.
 - **가장 주목할 재검증 결과**: `sustained_trend_check.py`가 10년치+XGBoost 기준으로는 4개 카테고리 전부에서 기존 breakout 라벨이 더 나은 것으로 나와, 기존 "성분·컨셉·클레임은 부분 지지" 결론이 "전부 기각"으로 더 선명해짐. `check_low_volume_sensitivity.py`는 LR로 중간 테스트했을 때 일부 카테고리에서 결론이 뒤집히는 것처럼 보였으나 XGBoost(최종 주 모델)로 재확인하니 기존 결론("저검색량 제외 시 전 카테고리 하락")이 그대로 유지됨 — 모델을 바꿔가며 교차검증한 덕에 발견한 비일관성이었음.
 - 올리브영 검증(`validate_with_oliveyoung_snapshot*.py`)은 모델 예측이 아니라 실제 라벨(ground truth)을 쓰므로 모델 전환과 무관하게 재실행만 함 — 수치가 거의 그대로였음(29개 키워드, 효능만 8→7개로 1개 줄어듦).
+
+## 진행 상황 (장기 리드타임 탐색 — RQ3 미국 선행신호 기각, 장기 호라이즌 긍정, 2026-10-06)
+- 사용자의 실무적 요구: 화장품은 제품기획·마케팅에 시간이 걸려 "이번 주 breakout" 탐지보다 "6개월~1년 전에 아는 것"이 더 메리트 있음. 두 방향을 탐색.
+- **(A) 해외(미국) Google Trends 선행신호 — 기각.** `collect_google_trends.py`로 성분 22개의 영문 매핑(`GOOGLE_TRENDS_KEYWORD_MAPPING.md`)을 만들어 미국 Google Trends를 수집(사용자가 로컬에서 pytrends로 직접 수집, 이 세션은 trends.google.com도 egress 차단으로 직접 수집 불가).
+  - 1차 시도(4년 단위 3개 청크 + 겹침 구간 리스케일)는 데이터 품질 문제로 실패 — 나이아신아마이드처럼 폭발적으로 성장한 키워드에서 청크 경계마다 값이 점프(70→113→263→341 등, 원래 0~100 스케일을 벗어남). 단일 쿼리(월간 해상도, 리스케일 불필요)로 재수집해 해결.
+  - `check_us_lead_lag.py`로 성분 22개의 US/KR breakout(월간 Tukey IQR) 시차를 측정 — "미국이 먼저" 사례는 36.8%로 500회 순열검정 결과 랜덤보다도 낮음(p=0.97, 가설 기각). 오히려 "한국이 먼저" 사례가 59.9%로 랜덤보다 약하게 높음(p=0.03, 단일 검정이라 엄격하지 않음). 가설과 반대 방향 — 아직 본문에 반영 안 함(사용자와 논의만).
+- **(B) 장기 호라이즌(6개월/1년) 재레이블링 — 긍정적, §4.4로 반영.** 새 데이터 수집 없이 기존 파이프라인으로 라벨만 "t+1~t+N주 안에 breakout 발생 여부"로 재정의(`check_long_horizon_prediction.py`). feature는 기존과 동일(T 시점 이전만 사용)이라 누수 아님.
+  - AUC: 1주(기존) 대비 26주·52주에서도 크게 무너지지 않음(성분 0.706→0.656→0.631, 제형 0.755→0.654→0.714, 컨셉·클레임 0.809→**0.835**→0.821, 효능 0.818→0.741→0.715).
+  - 다만 양성 비율이 호라이즌에 따라 5.2%→53.4%→69.4%로 급증(윈도 안에 breakout이 일어날 "기회"가 많아지므로) — 이진 질문의 의미가 희석됨을 한계로 명시.
+  - Precision@1은 이 높아진 기준선 대비로도 뚜렷이 높음(26주 90~100% vs 기준선 53.4%, 52주 93~99% vs 69.4%) — 랭킹 용도로는 여전히 유효.
+  - THESIS_DRAFT.md에 4.4절(신규)로 반영, 5.1 실무적 시사점에 한 줄 추가, Abstract에도 한 문장 추가. 교수님 확인사항 #12로 (A)·(B) 둘 다 플래그(（A）는 아직 본문 미반영 상태를 명시).
