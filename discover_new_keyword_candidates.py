@@ -98,6 +98,14 @@ def parse_facets(html):
       <input ... attribute-name="주요기능" attribute-value="보습" ...>
 
     FACET_TO_CATEGORY에 없는 그룹명(피부타입 등)은 자동으로 무시된다.
+
+    ⚠️ 2026-10-06 실행 결과 발견한 버그 수정: 올리브영 필터 값 중 일부는
+    "리프팅/탄력", "광채/항산화", "미백/잡티"처럼 "/"로 두 개념을 묶어
+    한 체크박스 값으로 등록해놨다. 이를 그대로 하나의 키워드로 취급하면
+    (a) "리프팅"·"탄력"·"항산화"·"미백"처럼 이미 후보에 있는 개념이
+    "신규"로 오탐지되고, (b) "광채"·"잡티"처럼 진짜 신규인 절반이 결합된
+    형태로만 남아 독립 키워드로 식별되지 않는다. "/"가 있으면 분리해
+    각각을 별개의 값으로 취급한다.
     """
     soup = BeautifulSoup(html, "html.parser")
     facets = {}
@@ -106,7 +114,10 @@ def parse_facets(html):
         value = input_el.get("attribute-value", "").strip()
         if facet_name not in FACET_TO_CATEGORY or not value:
             continue
-        facets.setdefault(facet_name, set()).add(value)
+        for part in value.split("/"):
+            part = part.strip()
+            if part:
+                facets.setdefault(facet_name, set()).add(part)
     return facets
 
 
