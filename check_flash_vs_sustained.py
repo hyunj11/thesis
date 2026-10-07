@@ -23,6 +23,7 @@ momentum/rank_in_category — "뜨는 순간의 특성"으로 "얼마나 갈지"
 """
 
 import pandas as pd
+import shap
 from catboost import CatBoostClassifier
 from sklearn.metrics import roc_auc_score
 
@@ -100,6 +101,24 @@ def main():
 
     importances = dict(zip(X_train.columns, model.get_feature_importance().round(3)))
     print("feature importance:", importances)
+
+    print("\n=== SHAP 전역·방향성 (sustained=1 기준) ===")
+    explainer = shap.TreeExplainer(model)
+    sv = explainer.shap_values(X_train)
+    shap_df = pd.DataFrame(sv, columns=X_train.columns, index=X_train.index)
+    for col in FEATURE_COLS:
+        high = X_train[col] >= X_train[col].quantile(0.75)
+        low = X_train[col] <= X_train[col].quantile(0.25)
+        print(f"  {col}: mean|SHAP|={shap_df[col].abs().mean():.4f}  "
+              f"high25%={shap_df.loc[high, col].mean():.4f}  low25%={shap_df.loc[low, col].mean():.4f}")
+
+    print("\n=== 카테고리별 |SHAP| ===")
+    rows = []
+    for category in sorted(train["category"].unique()):
+        idx = train.index[train["category"] == category].intersection(shap_df.index)
+        for col in FEATURE_COLS:
+            rows.append({"category": category, "feature": col, "mean_abs_shap": shap_df.loc[idx, col].abs().mean()})
+    print(pd.DataFrame(rows).pivot(index="feature", columns="category", values="mean_abs_shap").round(4))
 
     test[["keyword", "category", "breakout_period", "sustained", "pred_proba"]].to_csv(
         "flash_vs_sustained_results.csv", index=False, encoding="utf-8-sig"

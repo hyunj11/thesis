@@ -340,3 +340,11 @@ df.to_csv("naver_trend_labeled.csv", index=False, encoding="utf-8-sig")
 - **§4.8 신규 키워드 온보딩**(`check_new_keyword_onboarding.py`): §5.2에서 실제로 발굴한 9개 신규 키워드를 학습에서 완전히 제외한 모델로 테스트 — 무작위 홀드아웃이 아니라 "실제로 나중에 발굴된" 키워드라는 점이 핵심. 결과: 제외 모델 AUC 0.861(풀링) vs 포함 모델 0.864로 거의 동일 — §5.2 홀드아웃 실험 결론의 실제 사례 재확인.
 - **§4.9 Flash vs Sustained**(`check_flash_vs_sustained.py`): breakout 2,473건을 half-life 중앙값(카테고리별)·censored 기준으로 flash/sustained 라벨링(전체 59.6% sustained) 후 breakout 시점 feature로 2단계 분류. AUC: 성분0.608·제형0.812·컨셉·클레임0.570·효능0.770(풀링 0.748). **흥미로운 발견**: "뜰지 여부" 난이도 순서(성분 최악, 효능/컨셉·클레임 양호)와 "뜨면 얼마나 갈지" 난이도 순서(제형 최선, 컨셉·클레임 최악)가 다름 — 제형은 1단계는 중간, 2단계는 가장 쉬움. feature importance는 volatility 1위(flash 사건이 breakout 시점 변동성이 훨씬 높음: 142.7 vs sustained 45.1 — 직접 평균 비교로 방향 확인).
 - THESIS_DRAFT.md에 §4.7~4.9(신규) 추가, Abstract 보강, 교수님 확인사항 #18 추가.
+
+## 진행 상황 (§4.9 심화 — SHAP 카테고리별 분해, 2026-10-07)
+- 사용자가 "다중 호라이즌/온보딩/flash-sustained 중 어느 게 더 발전시킬 만한가" 질문 → §4.9(flash vs sustained)를 추천(예상을 깨는 새 발견, §4.2·5.1의 추측을 직접 검증, 더 팔 여지가 큼이라는 3가지 이유). 사용자가 동의해 §4.9를 SHAP 카테고리별 분해로 심화.
+- SHAP TreeExplainer로 flash/sustained 모델 재분석: 전역적으로 변동성(|SHAP| 0.839)이 1위, 계절편차(0.306) 2위, rank_in_category(0.167) 3위. 방향: 변동성 높음→flash쪽(상위25% SHAP -0.83, 하위25% +1.11), 계절편차 높음(계절기대 이상 급등)→flash, 낮음(눌림 후 튀어오름)→sustained, rank_in_category 높음(카테고리 내 최고 순위)→오히려 flash(역설적, "너무 극적인 급등은 오래 못 간다"는 실무 신호).
+- 카테고리별 |SHAP|: 제형이 변동성 기여도 최대(1.12)—§4.9 AUC 1위(0.812)와 정확히 일치. 컨셉·클레임은 계절편차 기여도 최대(0.375)지만 AUC는 최하(0.570)—표본 부족(n=140, sustained 비율 45.1%로 최저)으로 해석.
+- §4.5("변동성 급증+계절 저활동이 breakout 전조")와 §4.9를 연결하는 서사 완성: "조용히 눌려있다가 서서히 변동성이 커지며 뜬 breakout은 오래 가지만(sustained), 계절 기대 이상으로 급작스럽게 폭발한 breakout은 반짝 꺼진다(flash)".
+- 올리브영 교차검증 시도(성분 키워드별 sustained 비율 vs 실제 배합률coverage_pct): 상관 r=0.28(n=12)로 약함, 예외 사례(살리실산·아하 성분: sustained 비율 높지만 배합률 0%) 존재 — 결론으로 쓰지 않고 음성 결과로만 §4.9 끝에 투명하게 기록.
+- THESIS_DRAFT.md §4.9에 SHAP 심화 단락 2개 추가(방향성 분석 + 올리브영 교차검증 음성 결과).
