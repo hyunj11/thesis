@@ -312,3 +312,14 @@ df.to_csv("naver_trend_labeled.csv", index=False, encoding="utf-8-sig")
 - 해석: 카테고리 간 "전이"가 아니라 연초·명절·환절기라는 공통 계절 요인이 네 카테고리를 동시에 끌어올림. §4.5의 "계절편차가 SHAP 2위 신호" 결과와 직접 연결 — 계절편차가 중요한 이유를 구조적으로 설명.
 - THESIS_DRAFT.md에 §4.6(신규)로 반영, 1.3(기여 넷째 항목 추가)·5.1(첫 번째·가장 중요한 발견으로 재배치, §4.5 변동성 발견은 보조 근거로 재배치)·Abstract 수정, 교수님 확인사항 #15 추가.
 - 산출 파일: `cross_category_lead_lag.csv`.
+
+## 진행 상황 (RQ1 예측 성능 전수 비교 — CatBoost+확장 feature 최종 채택, 2026-10-07)
+- 사용자 지시: "기본 베이스는 예측 연구가 되어야 한다. 이건 무조건 성공해야 한다 — 모든 방법을 다 써보자." §4.5·4.6의 탐색적 발견을 RQ1(예측 성능) 자체를 끌어올리는 데 직접 활용하기로 함.
+- lightgbm·catboost 패키지 설치. `model_comparison_experiment.py` 신규 작성: 알고리즘 5종(로지스틱회귀·XGBoost·LightGBM·CatBoost·RandomForest) × feature 조합 5종(기존 3개 feature부터, §4.6/4.5에서 발견한 신호를 feature로 전환한 신규 3개 — momentum/rank_in_category/days_to_holiday — 를 하나씩·전부 추가한 조합까지) = 25가지 전수 비교.
+- **최고 성능**: CatBoost + `full`+신규 feature 3개 전부 = 평균 AUC **0.8075**(기존 XGBoost `full` 0.786 대비 +0.021). 성분0.729/제형0.796/컨셉·클레임0.825/효능0.879.
+- 기여도 분해: days_to_holiday 단독 추가가 가장 큰 기여(XGBoost 기준 0.786→0.800). momentum·rank_in_category는 개별로는 효과가 작았으나 결합 시 추가 개선. 알고리즘 간 차이는 트리 기반 4종(XGB/LightGBM/CatBoost/RF) 모두 0.78~0.79로 크지 않았고 CatBoost가 근소 우위, 로지스틱회귀는 신규 feature 추가 시 오히려 하락(과적합·스케일 문제로 추정).
+- `catboost_model.py` 신규 작성 — 이 최종 조합(CatBoost+6개 feature)을 공식 주 모델 파이프라인으로 정식화(xgboost_model.py와 동일한 구조).
+- SHAP 재실행(`check_breakout_shap_patterns.py`를 새 모델 기준으로): volatility 1위(변화없음), seasonal_deviation 2위, **신규 feature days_to_holiday가 3위**(전 카테고리에서 고르게 중요) — §4.6 발견이 explainability에 머물지 않고 실제 예측 성능 개선으로 이어졌음을 재확인.
+- **반영 범위**: §4.0·4.1(모델 비교 표 전면 교체)·4.2(주 모델 컬럼 CatBoost로 교체)·4.5(SHAP 표 6-feature로 교체)·3.3(신규 feature 3개 설명 추가)·3.4(전수비교 설계 추가)·5.1(RQ1 성공을 최우선으로 재배치, 두 발견을 "그 성공을 이끈 요인"으로 재구성)·Abstract·최상단 안내문을 갱신.
+- **반영 범위 밖(의도적으로 남김)**: §4.4(장기 호라이즌)와 5.2절의 walkforward/sample_size_stability/keyword_holdout 등 민감도 검증 다수는 여전히 XGBoost(3-feature) 기준 — 전부 재검증하는 것은 이번 작업 범위를 넘어서 향후 과제로 명시(5.2 서두에 범위 안내 추가).
+- 교수님 확인사항 #16 추가.

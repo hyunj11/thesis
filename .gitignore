@@ -4,3 +4,4 @@ config.json
 naver_trends_raw/
 __pycache__/
 *.pyc
+catboost_info/
