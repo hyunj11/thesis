@@ -1,18 +1,29 @@
 """
 `model_comparison_experiment.py`에서 알고리즘 5종 x feature 조합 5종(25가지)을
-전부 비교한 결과, **CatBoost + 확장 feature셋(momentum·rank_in_category·
-days_to_holiday)**이 평균 AUC 0.8075로 가장 높았다(기존 XGBoost `full`
-0.786보다 +0.021). 이 스크립트는 그 최종 조합을 §4.1의 공식 주 모델
-파이프라인으로 정식화한다(xgboost_model.py와 동일한 구조·평가 방식 사용).
+전부 비교했을 때는 CatBoost + 확장 feature셋(momentum·rank_in_category·
+days_to_holiday) 3개 전부 추가가 평균 AUC 0.8075로 가장 높았다. 그러나 추가
+검증 결과 **days_to_holiday는 같은 주·같은 카테고리 안에서 모든 키워드가
+동일한 값을 가지는 feature라 "이번 주 여러 키워드 중 무엇을 고를지" 고르는
+문제(Precision@K)에는 전혀 기여하지 못하고, 오히려 Precision@1을 악화시켰다**
+(성분 17.2%→15.9%) — AUC 개선은 "명절 근처 주는 전반적으로 breakout이 많다"는
+시간대별 기준선 이동을 테스트 전체 기간에 걸쳐 포착한 것일 뿐, 키워드 간
+상대적 순위를 바꾸는 효과가 아니었다(§4.1·5.2 참고).
 
-새 feature 3개의 의미:
+따라서 이 스크립트는 **days_to_holiday를 제외**하고 within-week 판별력이
+실제로 있는 momentum·rank_in_category만 추가한 **CatBoost(평균 AUC 0.7936,
+Precision@1 평균 25.0%로 holiday 포함 모델의 24.7%보다도 높음)**를 §4.1의
+최종 공식 주 모델로 정식화한다(xgboost_model.py와 동일한 구조·평가 방식 사용).
+days_to_holiday가 보여준 "명절 동시성"(§4.6)은 폐기하지 않고, "어떤 키워드를
+고를지"가 아니라 "언제 모니터링 강도를 올릴지"를 결정하는 별도의 운영 전략
+feature로 역할을 재배치한다.
+
+신규 feature 2개의 의미:
   - momentum: signal(지연된 growth_rate)의 1주 전 대비 변화량 — "오르는 속도
-    자체가 더 빨라지고 있는가"(가속도)
+    자체가 더 빨라지고 있는가"(가속도). 키워드마다 다른 값을 가져 같은 주
+    안에서도 순위를 바꿀 수 있다.
   - rank_in_category: 같은 주·같은 카테고리 내에서 이 키워드의 signal이 상위
-    몇 %인지(0~1) — 절대적 증가율이 아니라 "동료 키워드 대비 상대적 두각"
-  - days_to_holiday: §4.6(카테고리 간 동시성 분석)에서 발견한 "breakout이
-    연초·설날·추석 전후에 몰린다"는 패턴을 사후 설명이 아니라 사전 예측
-    feature로 직접 사용 — 가장 가까운 명절(양력 새해/설날/추석)까지의 거리(일)
+    몇 %인지(0~1) — 절대적 증가율이 아니라 "동료 키워드 대비 상대적 두각".
+    정의상 같은 주 안에서 키워드 간 순위를 만들어내는 feature다.
 
 사용법:
   python3 catboost_model.py
@@ -27,7 +38,7 @@ from baseline_model import TEST_END, TEST_START, TRAIN_END, add_signal, load_fea
 from logistic_regression_model import add_lagged_seasonal, auc_by_category, build_design_matrix, drop_missing, precision_recall_at_k
 from model_comparison_experiment import add_extra_features
 
-FEATURE_COLS = ["signal", "volatility", "seasonal_deviation_pct_lag1", "momentum", "rank_in_category", "days_to_holiday"]
+FEATURE_COLS = ["signal", "volatility", "seasonal_deviation_pct_lag1", "momentum", "rank_in_category"]
 
 
 def fit_and_predict(train, test, feature_cols):

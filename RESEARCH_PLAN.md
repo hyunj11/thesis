@@ -323,3 +323,13 @@ df.to_csv("naver_trend_labeled.csv", index=False, encoding="utf-8-sig")
 - **반영 범위**: §4.0·4.1(모델 비교 표 전면 교체)·4.2(주 모델 컬럼 CatBoost로 교체)·4.5(SHAP 표 6-feature로 교체)·3.3(신규 feature 3개 설명 추가)·3.4(전수비교 설계 추가)·5.1(RQ1 성공을 최우선으로 재배치, 두 발견을 "그 성공을 이끈 요인"으로 재구성)·Abstract·최상단 안내문을 갱신.
 - **반영 범위 밖(의도적으로 남김)**: §4.4(장기 호라이즌)와 5.2절의 walkforward/sample_size_stability/keyword_holdout 등 민감도 검증 다수는 여전히 XGBoost(3-feature) 기준 — 전부 재검증하는 것은 이번 작업 범위를 넘어서 향후 과제로 명시(5.2 서두에 범위 안내 추가).
 - 교수님 확인사항 #16 추가.
+
+## 진행 상황 (16번 정정 — days_to_holiday가 AUC만 높이고 Precision@K는 악화시킴을 발견, 2026-10-07)
+- 사용자가 "계절·명절 feature가 화장품 유행을 반영하는 게 아니라 그냥 쇼핑 시즌 같은데?"라고 날카롭게 질문 → AUC뿐 아니라 Precision@K도 함께 재확인.
+- 원인 분석: days_to_holiday는 같은 주·같은 카테고리의 모든 키워드가 동일한 값을 가지는 시간 기반 feature라, 정의상 "이번 주 여러 키워드 중 무엇을 고를지"(Precision@K가 재는 것)에는 전혀 기여할 수 없다. AUC 상승은 "명절 근처 주는 전반적으로 breakout이 많다"는 시간대별 기준선 이동을 테스트 전체 기간에 걸쳐 포착한 것일 뿐.
+- 실측 확인(`fit_predict`/`precision_recall_at_k` 직접 호출): base vs base+holiday 비교 시 AUC는 성분 0.701→0.714로 개선됐지만 **Precision@1은 0.172→0.159로 오히려 악화**(제형도 0.261→0.255로 악화). 반면 momentum·rank_in_category는 키워드마다 같은 주 안에서도 다른 값을 가져 Precision@1을 0.2436(base)→0.25(momentum+rank, catboost)로 실제로 개선.
+- **최종 모델 재조정**: CatBoost + momentum + rank_in_category(days_to_holiday 제외) = 평균 AUC **0.7936**(0.8075보다 낮지만 "진짜" 개선), Precision@1 평균 **25.0%**(days_to_holiday 포함 모델의 24.68%보다도 높음).
+- `catboost_model.py`의 FEATURE_COLS에서 days_to_holiday 제거, docstring에 이 교훈 명시. SHAP 분석(`check_breakout_shap_patterns.py`)도 5-feature 모델로 재실행 — rank_in_category가 SHAP 3위(momentum·signal보다 큼), days_to_holiday 제외.
+- §4.6의 "명절 동시성" 발견 자체는 폐기하지 않음 — "어떤 키워드를 고를지"가 아니라 "언제 모니터링 강도를 올릴지" 결정하는 운영 전략으로 역할 재배치(§5.1).
+- THESIS_DRAFT.md 전체(최상단 안내문·§3.3·3.4·4.1·4.2·4.5·5.1·5.2 범위안내·Abstract)를 0.7936 기준으로 재수정. 교수님 확인사항 #16은 그대로 두고(당시 시점의 정직한 기록) #17로 정정 과정을 추가.
+- 교훈: SHAP·feature importance가 크다고 해서 "실제 키워드 선별에 유용하다"는 뜻은 아니다 — 시간대별로 고르게 분포하는 feature는 AUC(시간 pooled 지표)는 올릴 수 있어도 within-week ranking(Precision@K)에는 기여하지 못할 수 있다. 이번 세션에서 가장 중요한 방법론적 교훈 중 하나.
