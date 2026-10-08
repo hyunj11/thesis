@@ -348,3 +348,14 @@ df.to_csv("naver_trend_labeled.csv", index=False, encoding="utf-8-sig")
 - §4.5("변동성 급증+계절 저활동이 breakout 전조")와 §4.9를 연결하는 서사 완성: "조용히 눌려있다가 서서히 변동성이 커지며 뜬 breakout은 오래 가지만(sustained), 계절 기대 이상으로 급작스럽게 폭발한 breakout은 반짝 꺼진다(flash)".
 - 올리브영 교차검증 시도(성분 키워드별 sustained 비율 vs 실제 배합률coverage_pct): 상관 r=0.28(n=12)로 약함, 예외 사례(살리실산·아하 성분: sustained 비율 높지만 배합률 0%) 존재 — 결론으로 쓰지 않고 음성 결과로만 §4.9 끝에 투명하게 기록.
 - THESIS_DRAFT.md §4.9에 SHAP 심화 단락 2개 추가(방향성 분석 + 올리브영 교차검증 음성 결과).
+
+## 진행 상황 (5.2·4.4 전체를 최종 모델로 재검증 — XGBoost 잔존분 해소, 2026-10-08)
+- 사용자 요청: "5.2랑 §4.4 최종 모델로 재검증해줘" — 17번 정정에서 §4.1 주 모델을 CatBoost+모멘텀+카테고리 내 순위로 재조정한 이후, 시간 제약상 범위 밖으로 남겨뒀던 §4.4(장기 호라이즌)와 5.2절의 민감도 검증 스크립트들을 전부 재검증.
+- 대상 스크립트 7개를 동일한 기계적 패턴(XGBClassifier→CatBoostClassifier, FEATURE_COLS에 momentum/rank_in_category 추가, `add_extra_features()` 호출 추가, drop_missing 뒤 `.dropna(subset=["momentum","rank_in_category"])` 체이닝)으로 전부 수정·재실행: `check_sample_size_stability.py`, `check_walkforward_splits.py`, `check_keyword_holdout_generalization.py`, `check_low_volume_sensitivity.py`, `sustained_trend_check.py`, `check_iqr_multiplier_sensitivity.py`, `check_long_horizon_prediction.py`.
+- `check_xgboost_tuning_sensitivity.py`는 XGBoost 하이퍼파라미터 튜닝이 목적이었으므로 CatBoost 하이퍼파라미터(depth/learning_rate/iterations) 튜닝으로 재설계해 재실행 — 최적 조합(depth=2/lr=0.1/iterations=100)도 기존 고정값(depth=3/lr=0.05/iterations=200)과 AUC 차이가 ±0.006 이내로 미미해 "고정값이 이미 근접-최적"이라는 결론 유지.
+- `check_lag_selection_leakage.py`·`check_regression_framing.py` 두 스크립트는 의도적으로 로지스틱회귀/선형회귀만 비교하는 설계(주 모델 전환과 무관)라 그대로 둠.
+- **결과: 전부 XGBoost 때와 결론의 방향이 동일**했고 수치만 소폭 갱신됨 — 제형이 표본 안정성·신규 키워드 일반화 두 검증 모두에서 가장 불안정하다는 순위, 저검색량 제외 시 AUC 오히려 하락, sustained trend 가설 기각, IQR 배수 커질수록 AUC 상승 등 핵심 결론 모두 유지.
+- §4.4 표(1주/26주/52주 AUC)를 CatBoost 기준으로 교체(컨셉·클레임이 호라이즌이 길어질수록 오히려 AUC가 오르는 패턴도 동일하게 재확인: 0.826→0.875→0.872).
+- THESIS_DRAFT.md의 5.2 서두 범위 안내 문구를 "전부 재검증 완료"로 교체, §4.2의 XGBoost 기준 캐비트 삭제 후 새 표본-안정성 구간으로 교체, 5.2절 전체 bullet(표본 규모·단일 분할·IQR 배수·하이퍼파라미터·신규 키워드 일반화·저검색량·라벨링 불일치)의 수치를 CatBoost 기준으로 전면 교체.
+- 교수님 확인사항 #19 추가(17번의 범위 안내 해소를 기록).
+- 이 재검증으로 논문 전체가 이제 §4.1의 단일 최종 모델(CatBoost+모멘텀+카테고리 내 순위) 기준으로 완전히 일관됨.

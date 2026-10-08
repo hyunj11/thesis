@@ -26,12 +26,13 @@ feature로 쓰이지 않고 category만 쓰이므로 이론적으로는 신규 �
 import numpy as np
 import pandas as pd
 from sklearn.metrics import roc_auc_score
-from xgboost import XGBClassifier
+from catboost import CatBoostClassifier
 
 from baseline_model import add_signal, load_features, load_lag_windows, split_backtest
 from logistic_regression_model import add_lagged_seasonal, build_design_matrix, drop_missing
+from model_comparison_experiment import add_extra_features
 
-FEATURE_COLS = ["signal", "volatility", "seasonal_deviation_pct_lag1"]
+FEATURE_COLS = ["signal", "volatility", "seasonal_deviation_pct_lag1", "momentum", "rank_in_category"]
 N_DRAWS = 10
 HOLDOUT_FRACTION = 0.2
 SEED = 0
@@ -42,6 +43,7 @@ def main():
     lag_by_category = load_lag_windows()
     df = add_signal(df, lag_by_category)
     df = add_lagged_seasonal(df)
+    df = add_extra_features(df)
     train_all, test_all = split_backtest(df)
 
     keywords_by_category = df.groupby("category")["keyword"].unique().to_dict()
@@ -54,8 +56,10 @@ def main():
             n_holdout = max(1, round(len(kws) * HOLDOUT_FRACTION))
             holdout_keywords.update(rng.choice(kws, size=n_holdout, replace=False))
 
-        train = drop_missing(train_all[~train_all["keyword"].isin(holdout_keywords)], FEATURE_COLS)
-        test = drop_missing(test_all, FEATURE_COLS)
+        train = drop_missing(train_all[~train_all["keyword"].isin(holdout_keywords)], FEATURE_COLS).dropna(
+            subset=["momentum", "rank_in_category"]
+        )
+        test = drop_missing(test_all, FEATURE_COLS).dropna(subset=["momentum", "rank_in_category"])
         test_seen = test[~test["keyword"].isin(holdout_keywords)]
         test_new = test[test["keyword"].isin(holdout_keywords)]
 
@@ -67,10 +71,9 @@ def main():
         n_pos = y_train.sum()
         n_neg = len(y_train) - n_pos
         scale_pos_weight = n_neg / n_pos if n_pos > 0 else 1.0
-        model = XGBClassifier(
-            n_estimators=200, max_depth=3, learning_rate=0.05,
-            subsample=0.8, colsample_bytree=0.8,
-            scale_pos_weight=scale_pos_weight, eval_metric="logloss", random_state=42,
+        model = CatBoostClassifier(
+            iterations=200, depth=3, learning_rate=0.05,
+            scale_pos_weight=scale_pos_weight, random_state=42, verbose=False,
         )
         model.fit(X_train, y_train)
 

@@ -9,10 +9,18 @@ breakout 비율·모델 성능이 어떻게 달라지는지는 지금까지 검�
 
 방법: 배수를 1.0/1.5(현재 채택값)/2.0/2.5/3.0으로 바꿔 라벨링을 다시
 계산하고, (1) 카테고리별 breakout 비율이 어떻게 달라지는지, (2) 각
-배수로 다시 라벨링한 뒤 동일한 feature·백테스팅 split으로 재학습한 AUC가
-얼마나 달라지는지를 확인한다. lag window(N)는 기존 lag_selected.csv 값을
-그대로 쓴다(배수 변화만 격리해서 보기 위함 — lag 재선택까지 같이 바꾸면
-두 요인이 섞인다).
+배수로 다시 라벨링한 뒤 주 모델과 동일한 feature(§4.1: signal/volatility/
+계절편차/모멘텀/카테고리 내 순위)·백테스팅 split으로 CatBoost를 재학습한
+AUC가 얼마나 달라지는지를 확인한다. lag window(N)는 기존 lag_selected.csv
+값을 그대로 쓴다(배수 변화만 격리해서 보기 위함 — lag 재선택까지 같이
+바꾸면 두 요인이 섞인다).
+
+2026-10-08: §4.1 주 모델 전환에 맞춰 재검증. 배수가 커질수록(이상치
+기준이 엄격해질수록) 네 카테고리 모두 AUC가 꾸준히 상승한다(성분 0.668→
+0.744, 제형 0.710→0.810, 컨셉·클레임 0.809→0.872, 효능 0.797→0.946) —
+"더 극단적인 사건만 breakout으로 남길수록 더 쉽게 맞힌다"는 당연한 트레
+이드오프이며, 1.5배수 채택 자체를 반박하는 근거는 아니다(§3.2의 표준
+관례 논리 유지). XGBoost 시절과 방향·해석 모두 동일.
 
 사용법:
   python3 check_iqr_multiplier_sensitivity.py
@@ -20,13 +28,14 @@ breakout 비율·모델 성능이 어떻게 달라지는지는 지금까지 검�
 
 import pandas as pd
 from sklearn.metrics import roc_auc_score
-from xgboost import XGBClassifier
+from catboost import CatBoostClassifier
 
 from baseline_model import load_lag_windows, split_backtest
 from check_sample_size_stability import recompute_volatility
 from logistic_regression_model import add_lagged_seasonal, build_design_matrix, drop_missing
+from model_comparison_experiment import add_extra_features
 
-FEATURE_COLS = ["signal", "volatility", "seasonal_deviation_pct_lag1"]
+FEATURE_COLS = ["signal", "volatility", "seasonal_deviation_pct_lag1", "momentum", "rank_in_category"]
 MULTIPLIERS = [1.0, 1.5, 2.0, 2.5, 3.0]
 
 
@@ -67,10 +76,11 @@ def fit_auc(df, lag_by_category, seasonal_lookup):
     df = add_signal(df, lag_by_category)
     df = recompute_volatility(df, lag_by_category)
     df = df.merge(seasonal_lookup, on=["keyword", "period"], how="left")
+    df = add_extra_features(df)
 
     train, test = split_backtest(df)
-    train = drop_missing(train, FEATURE_COLS)
-    test = drop_missing(test, FEATURE_COLS)
+    train = drop_missing(train, FEATURE_COLS).dropna(subset=["momentum", "rank_in_category"])
+    test = drop_missing(test, FEATURE_COLS).dropna(subset=["momentum", "rank_in_category"])
     if train["is_breakout"].nunique() < 2 or len(test) == 0:
         return None
 
@@ -80,10 +90,9 @@ def fit_auc(df, lag_by_category, seasonal_lookup):
     n_pos = y_train.sum()
     n_neg = len(y_train) - n_pos
     scale_pos_weight = n_neg / n_pos if n_pos > 0 else 1.0
-    model = XGBClassifier(
-        n_estimators=200, max_depth=3, learning_rate=0.05,
-        subsample=0.8, colsample_bytree=0.8,
-        scale_pos_weight=scale_pos_weight, eval_metric="logloss", random_state=42,
+    model = CatBoostClassifier(
+        iterations=200, depth=3, learning_rate=0.05,
+        scale_pos_weight=scale_pos_weight, random_state=42, verbose=False,
     )
     model.fit(X_train, y_train)
 

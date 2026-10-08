@@ -7,11 +7,18 @@ censored 비율 35.7%, 4개 카테고리 중 최고 — category_volatility_summ
 높은 수준을 유지하는가"를 보는 라벨이 더 잘 맞을 수 있다.
 
 방법: breakout(단기 급등) 라벨과 별개로 "sustained_trend" 라벨을 새로
-정의해, 기존과 동일한 feature(signal/volatility/계절편차)·백테스팅 split으로
-로지스틱회귀를 학습시켜 카테고리별 AUC를 비교한다. 성분 카테고리에서
-sustained_trend AUC가 기존 breakout AUC(0.659)보다 유의미하게 높다면 가설을
-지지하는 근거가 되고, 아니라면 가설을 기각하는 근거가 된다 — 둘 중 어느
-쪽이 나오든 결과를 그대로 보고한다(사전에 원하는 결론을 정해두지 않음).
+정의해, 주 모델과 동일한 feature(§4.1: signal/volatility/계절편차/모멘텀/
+카테고리 내 순위)·백테스팅 split으로 CatBoost를 학습시켜 카테고리별 AUC를
+비교한다. 성분 카테고리에서 sustained_trend AUC가 기존 breakout AUC보다
+유의미하게 높다면 가설을 지지하는 근거가 되고, 아니라면 가설을 기각하는
+근거가 된다 — 둘 중 어느 쪽이 나오든 결과를 그대로 보고한다(사전에 원하는
+결론을 정해두지 않음).
+
+2026-10-08: §4.1 주 모델 전환(CatBoost+모멘텀+카테고리 내 순위)에 맞춰
+재검증. 결과: 모든 카테고리에서 sustained_trend AUC가 breakout AUC보다
+뚜렷이 낮다(성분 -0.054, 제형 -0.124, 컨셉·클레임 -0.059, 효능 -0.225) —
+XGBoost 시절과 동일하게, "성분은 sustained_trend 라벨이 더 잘 맞을 것"
+이라는 가설은 기각된다.
 
 sustained_trend 라벨 정의(탐색적 — 선행연구에서 가져온 공식이 아니라 본
 점검을 위해 새로 설계한 것임을 명시):
@@ -26,13 +33,14 @@ sustained_trend 라벨 정의(탐색적 — 선행연구에서 가져온 공식�
 """
 
 import pandas as pd
-from xgboost import XGBClassifier
+from catboost import CatBoostClassifier
 
 from baseline_model import add_signal, load_lag_windows, split_backtest
 from baseline_model import CORE_FULL_COLS, SEASONAL_COL
 from logistic_regression_model import add_lagged_seasonal, auc_by_category, build_design_matrix
+from model_comparison_experiment import add_extra_features
 
-FEATURE_COLS = ["signal", "volatility", "seasonal_deviation_pct_lag1"]
+FEATURE_COLS = ["signal", "volatility", "seasonal_deviation_pct_lag1", "momentum", "rank_in_category"]
 BASELINE_WINDOW_WEEKS = 26
 SUSTAIN_WEEKS = 4
 
@@ -65,7 +73,7 @@ def prepare(df, label_col):
     # baseline_model.prepare_full_feature_rows와 동일한 결측 완화 규칙(계절편차
     # NaN -> 0)을 label_col이 is_breakout이 아닌 경우(sustained_trend)에도
     # 적용할 수 있도록 일반화한 버전(§5.2 "수집 기간" 항목 참고).
-    df = df.dropna(subset=CORE_FULL_COLS + [label_col]).copy()
+    df = df.dropna(subset=CORE_FULL_COLS + [label_col] + ["momentum", "rank_in_category"]).copy()
     df[SEASONAL_COL] = df[SEASONAL_COL].fillna(0)
     return df
 
@@ -81,10 +89,9 @@ def fit_and_auc(df, label_col):
     n_pos = y_train.sum()
     n_neg = len(y_train) - n_pos
     scale_pos_weight = n_neg / n_pos if n_pos > 0 else 1.0
-    model = XGBClassifier(
-        n_estimators=200, max_depth=3, learning_rate=0.05,
-        subsample=0.8, colsample_bytree=0.8,
-        scale_pos_weight=scale_pos_weight, eval_metric="logloss", random_state=42,
+    model = CatBoostClassifier(
+        iterations=200, depth=3, learning_rate=0.05,
+        scale_pos_weight=scale_pos_weight, random_state=42, verbose=False,
     )
     model.fit(X_train, y_train)
 
@@ -99,6 +106,7 @@ def main():
     lag_by_category = load_lag_windows()
     df = add_signal(df, lag_by_category)
     df = add_lagged_seasonal(df)
+    df = add_extra_features(df)
     df = add_sustained_label(df)
 
     print(f"sustained_trend 정의: 과거 {BASELINE_WINDOW_WEEKS}주 중앙값보다 {SUSTAIN_WEEKS}주 연속 높게 유지")
