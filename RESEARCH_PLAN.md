@@ -395,3 +395,7 @@ df.to_csv("naver_trend_labeled.csv", index=False, encoding="utf-8-sig")
 - 사용자 결정: **되돌리기**. `naver_keywords_final.csv`를 이번 5개 추가 이전 커밋(78개) 상태로 복원, `naver_trends.csv`에서 해당 5개 키워드 행 제거(76개로 복원) 후 파이프라인(label_breakouts→select_lag_window→compute_volatility→compute_seasonality→catboost_model) 재실행해 기존 수치(§4.1의 0.7936)와 거의 동일함을 재확인(성분 0.711/제형 0.759/컨셉·클레임 0.827/효능 0.869, 평균 0.792 — 미세한 차이는 API 재수집 노이즈).
 - 교훈: "키워드 풀을 늘리면 성능이 개선된다"는 지난 성공(9개 추가)이 일반 법칙이 아니라, **카테고리 균형을 유지해야 한다는 조건**이 붙는다는 점을 실증적으로 확인. 올리브영 필터 기반 발굴 파이프라인은 제형 카테고리를 구조적으로 찾을 수 없어 균형을 깨뜨리기 쉽다는 한계도 재확인. 향후 키워드 확대를 다시 시도한다면 카테고리별로 균등하게(또는 제형 전용 소스를 별도로 찾아) 추가해야 함.
 - THESIS_DRAFT.md는 수정하지 않음(되돌린 결과가 기존 §4.1 수치와 사실상 동일하므로).
+
+## 진행 상황 ("동료 대비 초과분" feature 시도 — 효과 없음, 2026-10-09)
+- 사용자가 궁금해한 ③번 아이디어(§4.6 동시성 발견을 진짜 feature로 재활용)를 실제로 구현해 검증(`check_excess_signal_performance.py`). days_to_holiday의 함정(같은 주 모든 키워드가 동일값)을 피하려고, "자신을 제외한 동료 평균과 자신의 값 차이"(excess_signal, excess_momentum)로 키워드마다 다른 값이 나오게 설계.
+- 결과: 평균 AUC 0.7917→0.7918(사실상 동일), Precision@1은 0.2596→0.2596으로 **소수점까지 완전히 동일**. 예상대로 이미 있는 rank_in_category·momentum과 담는 정보가 겹쳐서 추가 이득이 없었음. **효과 없음, 채택하지 않음.**
