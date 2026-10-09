@@ -12,9 +12,8 @@ breakout 라벨링·full 모델 파이프라인을 재학습시키고, 20회 AUC
 있다는 뜻이다.
 
 2026-10-06: 주 모델을 로지스틱회귀에서 XGBoost로 전환(§4.1)한 데 맞춰, 이
-스크립트도 XGBoost(xgboost_model.py와 동일한 고정 하이퍼파라미터)로
-안정성을 검증하도록 변경했다 — RQ2(카테고리 간 예측가능성 비교)의 근거는
-이제 주 모델인 XGBoost 기준이어야 하기 때문.
+스크립트도 XGBoost로 안정성을 검증하도록 변경했었다. 2026-10-08: 주 모델이
+다시 CatBoost+모멘텀+카테고리 내 순위(§4.1)로 바뀜에 따라 동일하게 갱신.
 
 사용법:
   python3 check_sample_size_stability.py
@@ -22,12 +21,13 @@ breakout 라벨링·full 모델 파이프라인을 재학습시키고, 20회 AUC
 
 import numpy as np
 import pandas as pd
-from xgboost import XGBClassifier
+from catboost import CatBoostClassifier
 
 from baseline_model import add_signal, load_lag_windows, split_backtest
 from logistic_regression_model import add_lagged_seasonal, auc_by_category, build_design_matrix, drop_missing
+from model_comparison_experiment import add_extra_features
 
-FEATURE_COLS = ["signal", "volatility", "seasonal_deviation_pct_lag1"]
+FEATURE_COLS = ["signal", "volatility", "seasonal_deviation_pct_lag1", "momentum", "rank_in_category"]
 N_DRAWS = 20
 SAMPLE_FRACTION = 0.8
 SEED = 42
@@ -67,9 +67,10 @@ def recompute_volatility(df, lag_by_category):
 def fit_auc(df, lag_by_category):
     df = add_signal(df, lag_by_category)
     df = add_lagged_seasonal(df)
+    df = add_extra_features(df)
     train, test = split_backtest(df)
-    train = drop_missing(train, FEATURE_COLS)
-    test = drop_missing(test, FEATURE_COLS)
+    train = drop_missing(train, FEATURE_COLS).dropna(subset=["momentum", "rank_in_category"])
+    test = drop_missing(test, FEATURE_COLS).dropna(subset=["momentum", "rank_in_category"])
     if train["is_breakout"].nunique() < 2 or len(test) == 0:
         return None
 
@@ -80,10 +81,9 @@ def fit_auc(df, lag_by_category):
     n_pos = y_train.sum()
     n_neg = len(y_train) - n_pos
     scale_pos_weight = n_neg / n_pos if n_pos > 0 else 1.0
-    model = XGBClassifier(
-        n_estimators=200, max_depth=3, learning_rate=0.05,
-        subsample=0.8, colsample_bytree=0.8,
-        scale_pos_weight=scale_pos_weight, eval_metric="logloss", random_state=42,
+    model = CatBoostClassifier(
+        iterations=200, depth=3, learning_rate=0.05,
+        scale_pos_weight=scale_pos_weight, random_state=42, verbose=False,
     )
     model.fit(X_train, y_train)
 
@@ -119,7 +119,7 @@ def main():
     print()
     summary = result.agg(["mean", "std", "min", "max"]).T
     summary["full_sample_auc"] = pd.Series(
-        {"성분": 0.704878, "제형": 0.756398, "컨셉·클레임": 0.811117, "효능": 0.820583}
+        {"성분": 0.716078, "제형": 0.763684, "컨셉·클레임": 0.825339, "효능": 0.869127}
     )
     print(summary.round(4))
 

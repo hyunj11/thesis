@@ -9,11 +9,11 @@ lag_selected.csv의 N, full feature셋)으로 재학습·재평가하고 AUC가 
 
 방법: train_end를 2021-12-31 / 2022-06-30 / 2022-12-31(기존 논문 분할) /
 2023-06-30 / 2023-12-31 5개 지점으로 바꿔가며, 각 지점 이전을 학습, 이후
-전체(수집 종료 시점 2026-09-21까지)를 테스트로 사용해 주 모델(XGBoost,
-2026-10-06 로지스틱회귀에서 전환 — §4.1) full 모델을 재학습하고 카테고리별
-AUC를 계산한다. lag window(N)는 기존 lag_selected.csv 값을 그대로 쓴다
-(이 스크립트는 split 민감도만 검증하는 것이 목적이며, lag 선택 누수는
-check_lag_selection_leakage.py에서 별도 검증했음).
+전체(수집 종료 시점 2026-09-21까지)를 테스트로 사용해 주 모델(2026-10-08
+기준 CatBoost+모멘텀+카테고리 내 순위 — §4.1) full 모델을 재학습하고
+카테고리별 AUC를 계산한다. lag window(N)는 기존 lag_selected.csv 값을
+그대로 쓴다(이 스크립트는 split 민감도만 검증하는 것이 목적이며, lag
+선택 누수는 check_lag_selection_leakage.py에서 별도 검증했음).
 
 사용법:
   python3 check_walkforward_splits.py
@@ -21,18 +21,19 @@ check_lag_selection_leakage.py에서 별도 검증했음).
 
 import pandas as pd
 from sklearn.metrics import roc_auc_score
-from xgboost import XGBClassifier
+from catboost import CatBoostClassifier
 
 from baseline_model import add_signal, load_features, load_lag_windows
 from logistic_regression_model import add_lagged_seasonal, build_design_matrix, drop_missing
+from model_comparison_experiment import add_extra_features
 
-FEATURE_COLS = ["signal", "volatility", "seasonal_deviation_pct_lag1"]
+FEATURE_COLS = ["signal", "volatility", "seasonal_deviation_pct_lag1", "momentum", "rank_in_category"]
 SPLIT_POINTS = ["2021-12-31", "2022-06-30", "2022-12-31", "2023-06-30", "2023-12-31"]
 
 
 def fit_auc_for_split(df, train_end):
-    train = drop_missing(df[df["period"] <= train_end], FEATURE_COLS)
-    test = drop_missing(df[df["period"] > train_end], FEATURE_COLS)
+    train = drop_missing(df[df["period"] <= train_end], FEATURE_COLS).dropna(subset=["momentum", "rank_in_category"])
+    test = drop_missing(df[df["period"] > train_end], FEATURE_COLS).dropna(subset=["momentum", "rank_in_category"])
 
     if train["is_breakout"].nunique() < 2 or len(test) == 0:
         return None, len(train), len(test)
@@ -44,10 +45,9 @@ def fit_auc_for_split(df, train_end):
     n_pos = y_train.sum()
     n_neg = len(y_train) - n_pos
     scale_pos_weight = n_neg / n_pos if n_pos > 0 else 1.0
-    model = XGBClassifier(
-        n_estimators=200, max_depth=3, learning_rate=0.05,
-        subsample=0.8, colsample_bytree=0.8,
-        scale_pos_weight=scale_pos_weight, eval_metric="logloss", random_state=42,
+    model = CatBoostClassifier(
+        iterations=200, depth=3, learning_rate=0.05,
+        scale_pos_weight=scale_pos_weight, random_state=42, verbose=False,
     )
     model.fit(X_train, y_train)
 
@@ -66,6 +66,7 @@ def main():
     lag_by_category = load_lag_windows()
     df = add_signal(df, lag_by_category)
     df = add_lagged_seasonal(df)
+    df = add_extra_features(df)
 
     rows = []
     for split in SPLIT_POINTS:

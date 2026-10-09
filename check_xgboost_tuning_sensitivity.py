@@ -1,21 +1,23 @@
 """
-4.1절 "로지스틱회귀와 XGBoost의 full 단계 성능이 사실상 동등했다"는 결론이
-XGBoost의 하이퍼파라미터를 튜닝하지 않은 데서 온 인공물(artifact)은 아닌지
-검증.
+§4.1 주 모델(CatBoost+모멘텀+카테고리 내 순위)의 하이퍼파라미터가 튜닝
+없이 고른 고정값(iterations=200/depth=3/learning_rate=0.05)에서 이미
+근접-최적인지, 아니면 튜닝하면 뚜렷이 더 좋아지는지 검증.
 
-xgboost_model.py는 max_depth=3/learning_rate=0.05/n_estimators=200/
-subsample=colsample_bytree=0.8을 "학습 표본이 크지 않다"는 판단으로
-고정값으로 썼을 뿐, 그리드서치나 교차검증으로 튜닝한 적은 없었다(김병완[1]은
+catboost_model.py는 이 값들을 "학습 표본이 크지 않다"는 판단으로 고정값
+으로 썼을 뿐, 그리드서치나 교차검증으로 튜닝한 적은 없었다(김병완[1]은
 GridSearchCV+5-fold로 여러 알고리즘을 튜닝했는데, 본 연구는 로지스틱회귀만
-StandardScaler를 적용했을 뿐 하이퍼파라미터 튜닝 자체는 둘 다 안 함 —
-공정한 비교이긴 하나 "XGBoost가 로지스틱회귀보다 안 낫다"는 결론이 혹시
-튜닝 부족 때문은 아닌지 점검 필요).
+StandardScaler를 적용했을 뿐 하이퍼파라미터 튜닝 자체는 둘 다 안 함).
+
+2026-10-08: §4.1 주 모델이 XGBoost에서 CatBoost+모멘텀+카테고리 내
+순위로 바뀌면서, 튜닝 대상 하이퍼파라미터도 CatBoost 것(depth/
+learning_rate/iterations)으로 바꿔 재검증.
 
 방법: 학습 구간(~2022-12-31)을 다시 내부 train(~2021-12-31)/validation
-(2022-01-01~2022-12-31)으로 쪼개, 소규모 그리드(max_depth x
-learning_rate x n_estimators)에서 validation 평균 AUC가 가장 높은 조합을
+(2022-01-01~2022-12-31)으로 쪼개, 소규모 그리드(depth x
+learning_rate x iterations)에서 validation 평균 AUC가 가장 높은 조합을
 고른다. 그 조합으로 전체 학습 구간(~2022-12-31)에 재학습해 테스트 구간
-(2023~2025) AUC를 계산하고, 기존 고정 하이퍼파라미터 결과와 비교한다.
+(2023~2025) AUC를 계산하고, 기존 고정 하이퍼파라미터 결과(catboost_model.py)와
+비교한다.
 
 사용법:
   python3 check_xgboost_tuning_sensitivity.py
@@ -25,24 +27,25 @@ import itertools
 
 import pandas as pd
 from sklearn.metrics import roc_auc_score
-from xgboost import XGBClassifier
+from catboost import CatBoostClassifier
 
 from baseline_model import add_signal, load_features, load_lag_windows, split_backtest
 from logistic_regression_model import add_lagged_seasonal, build_design_matrix, drop_missing
+from model_comparison_experiment import add_extra_features
 
-FEATURE_COLS = ["signal", "volatility", "seasonal_deviation_pct_lag1"]
+FEATURE_COLS = ["signal", "volatility", "seasonal_deviation_pct_lag1", "momentum", "rank_in_category"]
 INNER_TRAIN_END = "2021-12-31"
 VAL_START = "2022-01-01"
 VAL_END = "2022-12-31"
 
 GRID = {
-    "max_depth": [2, 3, 4],
+    "depth": [2, 3, 4],
     "learning_rate": [0.02, 0.05, 0.1],
-    "n_estimators": [100, 200, 400],
+    "iterations": [100, 200, 400],
 }
 
-REPORTED_AUC = {"성분": 0.704878, "제형": 0.756398, "컨셉·클레임": 0.811117, "효능": 0.820583}
-# xgboost_model.py full 모델 보고값(기존 결과 CSV 기준)
+REPORTED_AUC = {"성분": 0.716078, "제형": 0.763684, "컨셉·클레임": 0.825339, "효능": 0.869127}
+# catboost_model.py full 모델 보고값(기존 결과 CSV 기준, §4.1 최종 모델)
 
 
 def fit_predict(train, test, params):
@@ -53,13 +56,11 @@ def fit_predict(train, test, params):
     n_neg = len(y_train) - n_pos
     scale_pos_weight = n_neg / n_pos if n_pos > 0 else 1.0
 
-    model = XGBClassifier(
+    model = CatBoostClassifier(
         **params,
-        subsample=0.8,
-        colsample_bytree=0.8,
         scale_pos_weight=scale_pos_weight,
-        eval_metric="logloss",
         random_state=42,
+        verbose=False,
     )
     model.fit(X_train, y_train)
     test = test.copy()
@@ -89,9 +90,10 @@ def main():
     lag_by_category = load_lag_windows()
     df = add_signal(df, lag_by_category)
     df = add_lagged_seasonal(df)
+    df = add_extra_features(df)
     train_all, test_all = split_backtest(df)
-    train_all = drop_missing(train_all, FEATURE_COLS)
-    test_all = drop_missing(test_all, FEATURE_COLS)
+    train_all = drop_missing(train_all, FEATURE_COLS).dropna(subset=["momentum", "rank_in_category"])
+    test_all = drop_missing(test_all, FEATURE_COLS).dropna(subset=["momentum", "rank_in_category"])
 
     # 계절편차 NaN -> 0 완화(§5.2) 이후에도 내부 validation을 위해 날짜 대신
     # 정렬된 비율로 70/30 분할한다(날짜 기준 분할은 여전히 연초 구간에서
@@ -105,8 +107,8 @@ def main():
 
     best_params, best_score = None, -1
     grid_results = []
-    for max_depth, lr, n_est in itertools.product(GRID["max_depth"], GRID["learning_rate"], GRID["n_estimators"]):
-        params = {"max_depth": max_depth, "learning_rate": lr, "n_estimators": n_est}
+    for depth, lr, iters in itertools.product(GRID["depth"], GRID["learning_rate"], GRID["iterations"]):
+        params = {"depth": depth, "learning_rate": lr, "iterations": iters}
         val_pred = fit_predict(inner_train, val, params)
         score = mean_auc(val_pred)
         grid_results.append({**params, "val_mean_auc": score})
@@ -117,7 +119,7 @@ def main():
     print("\n=== 그리드서치 상위 5개 조합(validation 평균 AUC 기준) ===")
     print(grid_df.head(5).round(4).to_string(index=False))
     print(f"\n최적 조합: {best_params} (validation 평균 AUC={best_score:.4f})")
-    print(f"기존 고정값: max_depth=3, learning_rate=0.05, n_estimators=200")
+    print(f"기존 고정값: depth=3, learning_rate=0.05, iterations=200")
 
     # 최적 조합으로 전체 학습 구간에 재학습 → 테스트 구간 평가
     test_pred_tuned = fit_predict(train_all, test_all, best_params)

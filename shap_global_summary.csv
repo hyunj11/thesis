@@ -1,4 +1,4 @@
 ﻿feature,mean_abs_shap,shap_at_high_value(top25%),shap_at_low_value(bottom25%)
-volatility,0.71904737,0.8201267,-1.2336546
-seasonal_deviation_pct_lag1,0.32735053,-0.48852652,0.22944486
-signal,0.09733669,-0.12506999,-0.0125798965
+volatility,0.7900684,0.87279516,-1.3401593
+seasonal_deviation_pct_lag1,0.31274486,-0.46165133,0.2408207
+signal,0.10652483,-0.1359357,0.060964726

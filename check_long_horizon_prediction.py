@@ -21,9 +21,21 @@
     데이터가 필요하므로, 전체 데이터의 마지막 N주는 라벨을 계산할 수 없어
     평가에서 제외한다(수집 종료 시점 2026-09-21 기준).
 
+결과(2026-10-08, CatBoost+모멘텀+카테고리 내 순위 기준): 성분·제형·효능은
+호라이즌이 길어질수록 AUC가 뚜렷이 떨어진다(성분 0.712→0.632, 제형
+0.760→0.705, 효능 0.870→0.720) — 단기 급등 신호가 멀리 못 간다는 당연한
+결과. 컨셉·클레임은 예외적으로 26주·52주에서 오히려 1주보다 AUC가 높다
+(0.826→0.875/0.872) — 이 카테고리는 트렌드가 한번 형성되면 오래 지속되는
+성격이 강해(§4.5 참고) "장기간 내 breakout 발생 여부"가 "이번 주 breakout
+여부"보다 카테고리 내 순위·모멘텀 같은 feature로 더 쉽게 구분되는 것으로
+보인다. XGBoost 시절과 방향·해석 모두 동일.
+
 비교 대상: N=1주(기존 방식, 그대로 비교용으로 재현) / N=26주(6개월) /
-N=52주(1년). 주 모델(XGBoost)로 각각 학습·평가해 AUC가 호라이즌이 길어질
-수록 얼마나 떨어지는지 확인한다.
+N=52주(1년). 주 모델(§4.1: CatBoost+모멘텀+카테고리 내 순위)로 각각
+학습·평가해 AUC가 호라이즌이 길어질수록 얼마나 떨어지는지 확인한다.
+
+2026-10-08: §4.1 주 모델 전환(XGBoost 3-feature → CatBoost+모멘텀+
+카테고리 내 순위)에 맞춰 재검증.
 
 사용법:
   python3 check_long_horizon_prediction.py
@@ -31,12 +43,13 @@ N=52주(1년). 주 모델(XGBoost)로 각각 학습·평가해 AUC가 호라이�
 
 import pandas as pd
 from sklearn.metrics import roc_auc_score
-from xgboost import XGBClassifier
+from catboost import CatBoostClassifier
 
 from baseline_model import TEST_END, TEST_START, TRAIN_END, add_signal, load_features, load_lag_windows
 from logistic_regression_model import add_lagged_seasonal, build_design_matrix, drop_missing
+from model_comparison_experiment import add_extra_features
 
-FEATURE_COLS = ["signal", "volatility", "seasonal_deviation_pct_lag1"]
+FEATURE_COLS = ["signal", "volatility", "seasonal_deviation_pct_lag1", "momentum", "rank_in_category"]
 HORIZONS_WEEKS = [1, 26, 52]
 
 
@@ -61,8 +74,16 @@ def add_forward_breakout_label(df, horizon_weeks):
 
 
 def fit_auc(train, test, label_col):
-    train = drop_missing(train, FEATURE_COLS).loc[lambda d: d[label_col].notna()]
-    test = drop_missing(test, FEATURE_COLS).loc[lambda d: d[label_col].notna()]
+    train = (
+        drop_missing(train, FEATURE_COLS)
+        .dropna(subset=["momentum", "rank_in_category"])
+        .loc[lambda d: d[label_col].notna()]
+    )
+    test = (
+        drop_missing(test, FEATURE_COLS)
+        .dropna(subset=["momentum", "rank_in_category"])
+        .loc[lambda d: d[label_col].notna()]
+    )
 
     X_train = build_design_matrix(train, FEATURE_COLS)
     X_test = build_design_matrix(test, FEATURE_COLS).reindex(columns=X_train.columns, fill_value=0)
@@ -71,10 +92,9 @@ def fit_auc(train, test, label_col):
     n_pos = y_train.sum()
     n_neg = len(y_train) - n_pos
     scale_pos_weight = n_neg / n_pos if n_pos > 0 else 1.0
-    model = XGBClassifier(
-        n_estimators=200, max_depth=3, learning_rate=0.05,
-        subsample=0.8, colsample_bytree=0.8,
-        scale_pos_weight=scale_pos_weight, eval_metric="logloss", random_state=42,
+    model = CatBoostClassifier(
+        iterations=200, depth=3, learning_rate=0.05,
+        scale_pos_weight=scale_pos_weight, random_state=42, verbose=False,
     )
     model.fit(X_train, y_train)
 
@@ -93,6 +113,7 @@ def main():
     lag_by_category = load_lag_windows()
     df = add_signal(df, lag_by_category)
     df = add_lagged_seasonal(df)
+    df = add_extra_features(df)
 
     all_results = []
     for horizon in HORIZONS_WEEKS:

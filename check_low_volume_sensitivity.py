@@ -21,12 +21,13 @@ seasonality → logistic_regression_model.py)을 그대로 재사용해, 새로�
 import argparse
 
 import pandas as pd
-from xgboost import XGBClassifier
+from catboost import CatBoostClassifier
 
 from baseline_model import TEST_END, TEST_START, TRAIN_END, add_signal, load_lag_windows, split_backtest
 from logistic_regression_model import add_lagged_seasonal, auc_by_category, build_design_matrix, drop_missing
+from model_comparison_experiment import add_extra_features
 
-FEATURE_COLS = ["signal", "volatility", "seasonal_deviation_pct_lag1"]
+FEATURE_COLS = ["signal", "volatility", "seasonal_deviation_pct_lag1", "momentum", "rank_in_category"]
 
 
 def load_features(path="naver_trend_features.csv"):
@@ -64,9 +65,10 @@ def recompute_volatility(df, lag_by_category):
 def evaluate_auc(df, lag_by_category):
     df = add_signal(df, lag_by_category)
     df = add_lagged_seasonal(df)
+    df = add_extra_features(df)
     train, test = split_backtest(df)
-    train = drop_missing(train, FEATURE_COLS)
-    test = drop_missing(test, FEATURE_COLS)
+    train = drop_missing(train, FEATURE_COLS).dropna(subset=["momentum", "rank_in_category"])
+    test = drop_missing(test, FEATURE_COLS).dropna(subset=["momentum", "rank_in_category"])
     if train["is_breakout"].nunique() < 2 or len(test) == 0:
         return None
 
@@ -76,10 +78,9 @@ def evaluate_auc(df, lag_by_category):
     n_pos = y_train.sum()
     n_neg = len(y_train) - n_pos
     scale_pos_weight = n_neg / n_pos if n_pos > 0 else 1.0
-    model = XGBClassifier(
-        n_estimators=200, max_depth=3, learning_rate=0.05,
-        subsample=0.8, colsample_bytree=0.8,
-        scale_pos_weight=scale_pos_weight, eval_metric="logloss", random_state=42,
+    model = CatBoostClassifier(
+        iterations=200, depth=3, learning_rate=0.05,
+        scale_pos_weight=scale_pos_weight, random_state=42, verbose=False,
     )
     model.fit(X_train, y_train)
 
