@@ -14,7 +14,7 @@
 
 실행:
   python collect_naver_trends.py
-  python collect_naver_trends.py --start-date 2021-01-01 --end-date 2026-09-29 --time-unit week
+  python collect_naver_trends.py --start-date 2016-01-01 --end-date 2026-09-21 --time-unit week
 
 결과:
   - naver_trends_raw/<키워드>.json : API 원본 응답(감사·재현용, 깃에는 안 올라감)
@@ -87,8 +87,8 @@ def fetch_batch(headers, keyword_rows, start_date, end_date, time_unit):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--start-date", default="2021-01-01")
-    parser.add_argument("--end-date", default="2026-09-29")
+    parser.add_argument("--start-date", default="2016-01-01")
+    parser.add_argument("--end-date", default="2026-09-21")
     parser.add_argument("--time-unit", default="week", choices=["date", "week", "month"])
     args = parser.parse_args()
 
