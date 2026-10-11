@@ -7,7 +7,7 @@
 
 ## Abstract (초안)
 
-**This study's central finding is that Naver search-trend data alone can predict, before the fact, which cosmetics keywords are about to break out in popularity — correctly ranking likely breakouts 2.8 to 4.6 times better than random selection (mean AUC 0.79), with the predicted keywords also showing up in actual best-selling products.** Rapid shifts in consumer attention toward specific cosmetics ingredients, product concepts, formulations, and efficacy claims make early trend detection valuable for R&D and marketing decision-making. However, existing studies on cosmetics trends are largely descriptive (text-mining, sentiment/network analysis of already-popular keywords), and studies that forecast which individual keywords will become popular are rare, particularly ones that compare predictability across conceptually distinct keyword types. This study proposes a supervised breakout-prediction model that uses Naver Search Trend data to classify, before the fact, which cosmetics-related keywords—drawn from four categories (ingredient, concept/claim, formulation, and efficacy)—are likely to "break out" in the near future. Breakout events are labeled using Tukey's IQR outlier method applied to week-over-week search-volume growth rates within each category, avoiding an arbitrary threshold. Five classifiers (logistic regression, XGBoost, LightGBM, CatBoost, and random forest) are trained on pre-breakout features (recent growth rate, volatility, seasonal deviation, momentum, and within-category rank) and backtested on a held-out future period; CatBoost with this feature set achieves the highest accuracy (mean AUC 0.79, up from 0.478 for a naive growth-rate-only rule) and is adopted as the primary model, with logistic regression retained for coefficient-level interpretability. Splitting keywords into these four categories is a design choice made to improve prediction accuracy rather than an end in itself (category-specific labeling thresholds, lag windows, and a category feature), and a breakdown of performance by category shows that ingredient keywords are consistently the hardest to predict, while the ranking among the other three categories is sensitive to the algorithm used and is therefore not treated as a settled conclusion. A supplementary validation step links breakout keywords to actual best-selling products (ingredient lists for ingredient keywords, product names for the other three categories) collected from a major Korean beauty retailer (Oliveyoung), illustrating practical relevance for R&D and marketing teams. Because product development and marketing require lead time, this study also re-labels the prediction target over 4-week, 6-month, and 12-month forward windows and finds that predictive signal persists meaningfully at these longer horizons, supporting the model's use as an early-warning ranking tool rather than only a same-week detector. Exploiting the fact that four semantically distinct categories are tracked simultaneously with the same method, this study also tests whether breakout events diffuse across categories with a lag (e.g., ingredient hype preceding efficacy/claim hype) — a hypothesis never previously tested in this literature. Cross-correlation across all 12 ordered category pairs instead finds synchrony rather than diffusion (the strongest correlation is consistently at lag 0), and these simultaneous surges disproportionately cluster around New Year, Lunar New Year, and the Chuseok/seasonal-transition period (66.7% of top co-surge weeks vs. a 33.0% baseline) — suggesting breakouts are driven substantially by shared seasonal demand rather than purely idiosyncratic, keyword-level novelty. A SHAP analysis of the final classifier, combined with a comparison of pre-breakout feature trajectories, further shows that the most consistent precursor across all four categories is a surge in search-volume volatility rather than growth rate itself, offering a model-free heuristic for practitioners. Finally, because the original keyword list is a fixed snapshot, this study also designs and runs, once end-to-end, an operational pipeline that re-scrapes a retailer's search filters to discover new candidate keywords, vets them for lexical ambiguity, and re-collects and re-scores them without retraining, demonstrating a usable refresh cycle rather than a one-off backtest. Taken together, expanding the keyword pool and sweeping algorithms and feature sets raise the mean AUC from 0.773 to 0.7936 over the course of the study.
+**This study's central finding is that Naver search-trend data alone can predict, before the fact, which cosmetics keywords are about to break out in popularity — correctly ranking likely breakouts 2.8 to 4.6 times better than random selection (mean AUC 0.79), with the predicted keywords also showing up in actual best-selling products.** Rapid shifts in consumer attention toward cosmetics ingredients, concepts, formulations, and efficacy claims make early trend detection valuable for R&D and marketing, yet existing research on cosmetics trends is largely descriptive and rarely forecasts which individual keywords will become popular. This study proposes a supervised breakout-prediction model using Naver Search Trend data to classify, before the fact, which cosmetics keywords — drawn from four categories (ingredient, concept/claim, formulation, and efficacy) — are likely to break out. Breakout events are labeled with Tukey's IQR method applied to week-over-week search-growth rates within each category. Five classifiers are trained on pre-breakout features (growth rate, volatility, seasonal deviation, momentum, and within-category rank) and backtested on a held-out future period; CatBoost achieves the best accuracy (mean AUC 0.79, up from 0.478 for a naive rule) and is adopted as the primary model, with logistic regression retained for interpretability. Splitting keywords by category is a design choice to improve prediction accuracy, and ingredient keywords are consistently the hardest to predict. A supplementary validation links predicted keywords to actual best-selling products from a major Korean beauty retailer, and the signal persists over 1-month to 1-year horizons. This study further finds that breakouts across categories occur in synchrony rather than diffusing with a lag, clustering around seasonal periods, and that the most consistent precursor to a breakout is a surge in search-volume volatility rather than growth rate itself. Finally, an operational pipeline that re-discovers and re-scores new candidate keywords is designed and run once end-to-end, demonstrating a usable refresh cycle beyond a one-off backtest.
 
 **Key Words**: Cosmetics Trend, Search Trend Data, Breakout Prediction, Big Data, Machine Learning, Naver Trend
 
@@ -120,29 +120,7 @@
 
 이 방법을 채택한 근거는 다음과 같다. 첫째, 절대적 증가율 임계치(예: "6개월 평균 대비 200% 증가")는 근거가 부족한 임의 기준이며, Google Trends의 공식 breakout 정의(검색량 5,000%+ 증가)는 네이버 트렌드가 이미 0~100으로 정규화된 상대값이라는 점에서 그대로 적용할 근거가 없어 모두 기각했다. 둘째, IQR 기반 이상치 탐지는 통계학에서 널리 검증된 표준 기법이며, 카테고리별 분포에 따라 자동으로 임계치가 조정되는 적응형(adaptive) 기준이라 임의성 논란을 줄인다. 셋째, 원 수준값이 아닌 증가율(differenced) 기반이라는 점에서, 두 비정상 시계열이 우연히 유사한 추세를 보여도 실제로는 무관할 수 있다는 가성회귀 위험[4][15]을 완화하는 효과가 있다. 넷째, 동일한 IQR 이상치 탐지 공식이 국내 유사 연구[1]에서도 실제 채택된 선례가 있다.
 
-```python
-import pandas as pd
-
-df = pd.read_csv("naver_trends.csv")
-df["period"] = pd.to_datetime(df["period"])
-
-# 완전히 끝나지 않은 마지막 주 제외 (as_of = 데이터 수집 시점)
-period_end = df["period"] + pd.Timedelta(days=6)
-df = df[period_end < as_of].copy()
-
-# 전주 대비 증가율
-df = df.sort_values(["keyword", "period"])
-df["growth_rate"] = df.groupby("keyword")["ratio"].pct_change() * 100
-
-# 카테고리별 Tukey IQR 임계치 적용
-grouped = df.groupby("category")["growth_rate"]
-q1 = grouped.transform(lambda s: s.quantile(0.25))
-q3 = grouped.transform(lambda s: s.quantile(0.75))
-df["breakout_threshold"] = q3 + 1.5 * (q3 - q1)
-df["is_breakout"] = df["growth_rate"] > df["breakout_threshold"]
-```
-
-카테고리별로 그룹화하는 이유는 "이례적 급등"의 기준선 자체가 카테고리마다 다를 수 있음을 반영해, 예측 성능(RQ1)을 더 정확하게 만들기 위함이다.
+절차를 정리하면 다음과 같다. 키워드 k, 카테고리 c, 주차 t에 대해 증가율 g(k,t) = [r(k,t) − r(k,t−1)] / r(k,t−1) × 100(r은 주간 상대 검색량)을 계산하고, 카테고리 c에 속한 모든 (k,t)의 g(k,t) 분포에서 사분위수 Q1(c)·Q3(c)를 구해 임계치 τ(c) = Q3(c) + 1.5 × [Q3(c) − Q1(c)]를 계산한 뒤, g(k,t) > τ(c)이면 breakout(양성)으로 라벨링한다. 이때 수집 시점에 아직 끝나지 않아 부분 집계된 마지막 주는 분석에서 제외한다(구현 코드는 부록 C). 카테고리별로 그룹화하는 이유는 "이례적 급등"의 기준선 자체가 카테고리마다 다를 수 있음을 반영해, 예측 성능(RQ1)을 더 정확하게 만들기 위함이다.
 
 ### 3.3 Feature 설계
 
@@ -169,7 +147,7 @@ RQ1(예측 성능)이 본 연구의 주 목표이므로(§1.2~1.4), §4.5~4.6의
 
 ### 3.5 검증 방법(백테스팅)
 
-봉기태·이희상[6]의 "과거 구간 학습 → 미래 구간 실측 검증" 구조를 준용하여, 과거 구간(~2022-12-31)으로 모델을 학습시키고 이후 구간(2023-01-01~2025-12-31)에서 실제 breakout 여부와 비교한다. 평가지표로는 Precision@K, Recall@K, AUC를 사용한다. Ansary[22]의 주식 breakout 분류 연구에서 breakout 후보가 희소 클래스라 데이터 불균형 처리(랜덤 언더샘플링)가 필요했던 것처럼, 본 연구의 breakout 비율도 전체 6.5%로 낮은 불균형 이진분류 문제였다(§4.0). 다만 언더샘플링은 이미 적은 키워드 수(카테고리당 11~22개)에서 표본을 더 줄이는 결과를 낳으므로, 대신 로지스틱회귀에는 `class_weight="balanced"`, XGBoost에는 `scale_pos_weight`를 적용하는 클래스 가중치 방식을 택했다. 아울러 카테고리별(성분/컨셉/제형/효능) 변동성 지표(변동계수, peak 대비 baseline 비율, half-life)를 함께 분석해 §4.2의 성능 세부 내역을 뒷받침한다.
+봉기태·이희상[6]의 "과거 구간 학습 → 미래 구간 실측 검증" 구조를 준용하여, 과거 구간(~2022-12-31)으로 모델을 학습시키고 이후 구간(2023-01-01~2025-12-31)에서 실제 breakout 여부와 비교한다. 평가지표로는 Precision@K, Recall@K, AUC를 사용한다. Precision@K와 Recall@K는 매주 각 카테고리 내에서 모델 예측확률이 가장 높은 상위 K개 키워드를 선택했을 때, 그중 실제 breakout 비율(Precision@K)과 그 주의 실제 breakout 키워드 중 상위 K개에 포함된 비율(Recall@K)을 뜻하며, 본문에서는 K=1(가장 유력한 키워드 1개 선택)을 기본값으로 보고한다. AUC는 카테고리별로 전체 테스트 구간을 풀링해 계산한 ROC-AUC다. Ansary[22]의 주식 breakout 분류 연구에서 breakout 후보가 희소 클래스라 데이터 불균형 처리(랜덤 언더샘플링)가 필요했던 것처럼, 본 연구의 breakout 비율도 전체 6.5%로 낮은 불균형 이진분류 문제였다(§4.0). 다만 언더샘플링은 이미 적은 키워드 수(카테고리당 11~22개)에서 표본을 더 줄이는 결과를 낳으므로, 대신 5개 알고리즘 모두에 클래스 가중치 방식(로지스틱회귀·RandomForest는 `class_weight="balanced"`, XGBoost·LightGBM·CatBoost는 `scale_pos_weight`)을 적용했다. 아울러 카테고리별(성분/컨셉/제형/효능) 변동성 지표(변동계수, peak 대비 baseline 비율, half-life)를 함께 분석해 §4.2의 성능 세부 내역을 뒷받침한다.
 
 ---
 
@@ -177,9 +155,9 @@ RQ1(예측 성능)이 본 연구의 주 목표이므로(§1.2~1.4), §4.5~4.6의
 
 ### 4.0 데이터 및 실험 설정
 
-네이버 데이터랩 검색어트렌드 API로 78개 후보 키워드(성분 25/컨셉·클레임 16/제형 15/효능 22) 중 76개(성분 25/컨셉·클레임 14/제형 15/효능 22)의 **주간(week)** 상대 검색량을 **2016-01-01~2026-09-21** 구간에서 수집했다(나머지 2개, "Non-합성향료"·"백탁없음"은 둘 다 컨셉·클레임 카테고리 후보였으나 네이버 데이터랩 자체에 검색 데이터가 없어 제외). 네이버 데이터랩 검색어트렌드는 2016-01-01부터 조회 가능한데, 초기 설계 당시엔 2020-12-28부터만 수집했으나(약 5.7년치) 학습 구간이 지나치게 짧아지는 문제(§5.2)가 발견돼 수집 시작일을 API가 지원하는 가장 이른 시점으로 앞당겨 재수집했다(약 10.7년치). 이후 고정된 키워드 후보군의 한계(§5.2)를 보완하기 위해 설계한 주기적 후보군 갱신 파이프라인을 실제로 1회 실행해, 올리브영 검색결과 필터에서 발견한 신규 9개 키워드(스쿠알렌·피부광채·잡티·올인원 스킨케어·알러지테스트·아미노산 성분·타우린 화장품·쿨링 효과·시카케어)를 동음이의어 검증을 거쳐 추가·백필 수집했다. 최종 분석 대상은 38,113행(2026-10-06 기준)이다.
+네이버 데이터랩 검색어트렌드 API로 78개 후보 키워드(성분 25/컨셉·클레임 16/제형 15/효능 22) 중 76개(성분 25/컨셉·클레임 14/제형 15/효능 22)의 **주간(week)** 상대 검색량을 **2016-01-01~2026-09-21** 구간에서 수집했다(나머지 2개, "Non-합성향료"·"백탁없음"은 둘 다 컨셉·클레임 카테고리 후보였으나 네이버 데이터랩 자체에 검색 데이터가 없어 제외). 네이버 데이터랩 검색어트렌드는 2016-01-01부터 조회 가능한데, 초기 설계 당시엔 2020-12-28부터만 수집했으나(약 5.7년치) 학습 구간이 지나치게 짧아지는 문제(§5.2)가 발견돼 수집 시작일을 API가 지원하는 가장 이른 시점으로 앞당겨 재수집했다(약 10.7년치). 이후 고정된 키워드 후보군의 한계(§5.2)를 보완하기 위해 설계한 주기적 후보군 갱신 파이프라인을 실제로 1회 실행해, 올리브영 검색결과 필터에서 발견한 신규 9개 키워드(스쿠알렌·피부광채·잡티·올인원 스킨케어·알러지테스트·아미노산 성분·타우린 화장품·쿨링 효과·시카케어)를 동음이의어 검증을 거쳐 추가·백필 수집했다. 최종 분석 대상은 38,113행(2026-10-06 기준)이다. 백테스팅(§3.5)의 테스트 구간은 2025-12-31까지이며, 그 이후 2026-01-01~2026-09-21 구간의 데이터는 모델 학습·평가에는 쓰이지 않고 §4.3의 올리브영 스냅샷 실무 사례 검증(2026-06-01 이후 breakout 라벨 기준)에만 사용한다.
 
-Tukey's IQR 이상치 탐지법(Q3+1.5×IQR, 카테고리별 그룹화)으로 breakout을 라벨링한 결과 양성(breakout) 비율은 전체 6.5%였다(성분 6.3%, 제형 5.8%, 컨셉·클레임 8.5%, 효능 6.2% — 4개 카테고리 모두 전형적인 불균형 이진분류 문제에 해당한다). Feature는 (1) 카테고리별 교차상관(cross-correlation) 기반으로 선택한 lag N주 전 증가율(서주연[7]의 방법 응용 — 성분 7주/제형 22주/컨셉·클레임 11주/효능 11주로 선택됨, |r|=0.04~0.10로 상관관계 자체는 약함; 변동성 계산에 필요한 최소 2주 이상으로 탐색 범위를 제한함, §3.3), (2) 동일 lag 윈도로 계산한 검색량 변동성(전주 이전 구간의 표준편차), (3) 계절-나이브 기준선(동일 ISO 주차의 과거 **2개 연도 이상**의 중앙값) 대비 편차로 구성했으며, 모두 라벨링 시점 T 이전 데이터만 사용해 미래 정보 누수를 방지했다 — (3)의 계절편차는 수식 자체가 현재 시점 t의 비율을 분자로 쓰므로, 모델 입력에는 1주 과거로 다시 이동해 T-1 시점 값으로 투입했다. 백테스팅은 봉기태·이희상[6]의 구조를 준용해 2022-12-31 이전을 학습(원 분할 25,243행), 2023-01-01~2025-12-31을 테스트(원 분할 10,472행)로 분리했다. `full` feature셋(변동성·계절편차 포함)이 유효한 행은 학습 24,269행(2016-02-22~2022-12-26, 원 분할의 96.1%)·테스트 10,470행(99.98%)으로, 거의 손실이 없다 — 데이터 수집 기간을 10년 이상으로 늘린 덕분에, 이전 버전에서 썼던 "계절편차 NaN을 0으로 채우는" 완화책(`prepare_full_feature_rows`, §5.2)은 학습 행의 27.9%(2016~2017년 극초반 구간)에만 쓰이는 보조적 안전장치로 남고, 더는 전체 학습 구간을 좌우하지 않는다. 클래스 불균형은 로지스틱회귀에 `class_weight="balanced"`, XGBoost에 `scale_pos_weight`를 적용해 대응했다(Ansary[22]가 주식 breakout 분류에서 언더샘플링으로 대응했던 것과 같은 목적을 가중치 방식으로 구현).
+Tukey's IQR 이상치 탐지법(Q3+1.5×IQR, 카테고리별 그룹화)으로 breakout을 라벨링한 결과 양성(breakout) 비율은 전체 6.5%였다(성분 6.3%, 제형 5.8%, 컨셉·클레임 8.5%, 효능 6.2% — 4개 카테고리 모두 전형적인 불균형 이진분류 문제에 해당한다). Feature는 (1) 카테고리별 교차상관(cross-correlation) 기반으로 선택한 lag N주 전 증가율(서주연[7]의 방법 응용 — 성분 7주/제형 22주/컨셉·클레임 11주/효능 11주로 선택됨, |r|=0.04~0.10로 상관관계 자체는 약함; 변동성 계산에 필요한 최소 2주 이상으로 탐색 범위를 제한함, §3.3), (2) 동일 lag 윈도로 계산한 검색량 변동성(전주 이전 구간의 표준편차), (3) 계절-나이브 기준선(동일 ISO 주차의 과거 **2개 연도 이상**의 중앙값) 대비 편차로 구성했으며, 모두 라벨링 시점 T 이전 데이터만 사용해 미래 정보 누수를 방지했다 — (3)의 계절편차는 수식 자체가 현재 시점 t의 비율을 분자로 쓰므로, 모델 입력에는 1주 과거로 다시 이동해 T-1 시점 값으로 투입했다. 백테스팅은 봉기태·이희상[6]의 구조를 준용해 2022-12-31 이전을 학습(원 분할 25,243행), 2023-01-01~2025-12-31을 테스트(원 분할 10,472행)로 분리했다. `full` feature셋(변동성·계절편차 포함)이 유효한 행은 학습 24,269행(2016-02-22~2022-12-26, 원 분할의 96.1%)·테스트 10,470행(99.98%)으로, 거의 손실이 없다 — 데이터 수집 기간을 10년 이상으로 늘린 덕분에, 이전 버전에서 썼던 "계절편차 NaN을 0으로 채우는" 완화책(`prepare_full_feature_rows`, §5.2)은 학습 행의 27.9%(2016~2017년 극초반 구간)에만 쓰이는 보조적 안전장치로 남고, 더는 전체 학습 구간을 좌우하지 않는다. 클래스 불균형은 5개 알고리즘 모두에 동일한 원리로 대응했다 — 로지스틱회귀·RandomForest에는 `class_weight="balanced"`, XGBoost·LightGBM·CatBoost에는 `scale_pos_weight`(음성/양성 비율)를 적용했다(Ansary[22]가 주식 breakout 분류에서 언더샘플링으로 대응했던 것과 같은 목적을 가중치 방식으로 구현).
 
 ### 4.1 전체 모델 성능
 
@@ -310,7 +288,7 @@ AUC는 우려와 달리 호라이즌이 길어져도 급격히 무너지지 않�
 
 ### 5.2 한계 및 향후 연구 방향
 
-본 연구의 한계는 다음과 같다. 데이터는 네이버 데이터랩이 제공하는 주간(week) 단위이며, 역으로 주간을 월간으로 집계해보면 breakout 사건의 73.7%가 사라져(재현율 26.3%) 더 세밀한 해상도(일간)를 확보하면 더 많은 신호를 잡을 수 있을 것으로 추정된다. 카테고리당 키워드 수가 14~25개로 많지 않아, 표본 재추출·분할 시점·완전 신규 키워드 홀드아웃 등 여러 민감도 분석에서 제형 카테고리의 AUC가 특히 크게 흔들렸다(다른 세 카테고리는 상대적으로 안정적이었다). lag window 선택 절차가 교차상관 계산 시 테스트 구간 일부를 포함해 엄밀한 하이퍼파라미터 누수가 있었음을 확인했으며, Tukey IQR의 배수(1.5×)·CatBoost 하이퍼파라미터·백테스팅 분할 시점 등 주요 설계 선택에 대한 민감도도 점검했다 — 결론에 영향을 줄 정도의 취약성은 발견되지 않았으나, 절대적인 AUC 수치는 이런 선택에 다소 의존적임을 밝혀둔다.
+본 연구의 한계는 다음과 같다. 데이터는 네이버 데이터랩이 제공하는 주간(week) 단위이며, 역으로 주간을 월간으로 집계해보면 breakout 사건의 73.7%가 사라져(재현율 26.3%) 더 세밀한 해상도(일간)를 확보하면 더 많은 신호를 잡을 수 있을 것으로 추정된다. 카테고리당 키워드 수가 14~25개로 많지 않아, 표본 재추출·분할 시점·완전 신규 키워드 홀드아웃 등 여러 민감도 분석에서 제형 카테고리의 AUC가 특히 크게 흔들렸다(다른 세 카테고리는 상대적으로 안정적이었다). lag window 선택 절차가 교차상관 계산 시 테스트 구간 일부를 포함해 엄밀한 하이퍼파라미터 누수가 있었음을 확인했으며, Tukey IQR의 배수(1.5×)·CatBoost 하이퍼파라미터·백테스팅 분할 시점 등 주요 설계 선택에 대한 민감도도 점검했다 — 결론에 영향을 줄 정도의 취약성은 발견되지 않았으나, 절대적인 AUC 수치는 이런 선택에 다소 의존적임을 밝혀둔다. 아울러 알고리즘×feature 25개 조합(부록 C) 중 최고 성능 조합을 테스트 구간 성능 자체로 선택했다는 점에서, 보고된 0.7936이라는 수치에는 테스트셋에 대한 선택 편향(test-set selection bias)이 어느 정도 섞여 있을 수 있다 — 별도의 검증(validation) 구간을 두지 않았다는 점, 그리고 학습/테스트 분할이 2022-12-31 기준 단일 분할이라는 점(분할 시점을 바꿔가며 수행한 민감도 분석으로 결론의 방향성은 재확인했으나, 시계열 예측 연구의 표준인 rolling-origin 교차검증을 전면적으로 적용하지는 못했다는 점)은 본 연구의 가장 중요한 방법론적 한계로 밝혀둔다.
 
 저검색량 키워드의 노이즈, 성분처럼 장기 지속형 트렌드가 많은 카테고리에 대한 라벨링 방식의 적합성, 완전히 새로운 신규 키워드에 대한 일반화 가능성도 직접 검증했다. 저검색량 키워드를 일괄 제외하면 오히려 성능이 하락했고, breakout(단기 급등) 라벨이 대안적인 "지속 트렌드" 라벨보다 모든 카테고리에서 더 나은 신호였으며, 학습에 전혀 없던 신규 키워드에도 모델이 거의 동일한 수준으로 일반화됐다. 또한 고정된 키워드 후보군이 시간이 지나면 새로운 성분·트렌드를 놓칠 수 있다는 한계를 보완하기 위해 올리브영 검색 필터를 재스크래핑해 신규 후보를 발굴·검증하는 갱신 파이프라인을 설계해 1회 실제로 실행했고, 신규 키워드 9개를 추가해 평균 AUC를 0.773→0.786으로 개선하는 것까지 확인했다.
 
@@ -359,6 +337,96 @@ AUC는 우려와 달리 호라이즌이 길어져도 급격히 무너지지 않�
 > **(2026-10-09 추가 대조 완료)** 수출 통계 전체 항목(114억 달러·12.3%·세계 2위·스킨케어·색조·수출대상국·미국)을 코스모닝·뉴시스·Korea JoongAng Daily·IBTimes·personalcaremagazine 등 식약처 발표를 직접 인용한 복수의 독립 보도로 재대조했다 — 스킨케어 수출액만 85.4억 달러 대 85.3억 달러로 소수점 한 자리 차이가 있었는데(식약처가 2026-01 잠정치와 2026-05 확정치를 서로 다르게 발표한 데서 온 차이로 보이며, 실질적 차이는 아님), 나머지 수치는 전부 정확히 일치했다. 복수의 독립 매체가 같은 식약처 수치를 일관되게 인용하고 있어, unipass 포털 원본을 직접 열람하지 않고도 사실상 1차 자료 수준의 신뢰도는 확보됐다고 판단한다.
 
 > ※ **(2026-10-05 업데이트)** 3·5·6·9·11번(국내 학술지 논문)의 쪽수와 16~19번(뉴스·보고서)의 URL·열람일을 모두 보완 완료했다. 3번(김영식·이승호) 1-14, 5번(박혜진) 465-480, 6번(봉기태·이희상) 14-24, 9번(이병욱 외) 491-501, 11번(임희숙·신재욱) 86-94는 각 논문 PDF 원문의 머리말·꼬리말 페이지 표기를 직접 대조해 확정했다(업로드된 PDF 파일 기준). 16~19번은 WebSearch로 실제 URL을 찾아 제목이 정확히 일치하는지 확인 후 기재했다(열람일 2026-10-05). 부가적으로 16번(코스모닝) 기사가 실제로 "온라인 매출 비중 28.3%"를 보도하고 있는지도 확인했고, 일치함을 확인했다 — 다만 이는 본 요청(쪽수·URL 보완)의 부수적 확인이며 1.1절 전체 수치의 전수 검증은 아니므로, 위 문단의 "원출처 1차 자료 대조 필요"라는 권고는 여전히 유효하다.
+
+---
+
+## 부록
+
+### 부록 A. 사용 키워드 전체 목록 (76개)
+
+| 카테고리 | 개수 | 키워드 |
+|---|---|---|
+| 성분 | 25 | 나이아신아마이드, PDRN, 판테놀, 펩타이드, 히알루론산, 세라마이드, 레티놀, 아하 성분, 살리실산, 콜라겐, 스쿠알란, 병풀추출물, 엑소좀, 장미추출물, 어성초, 알란토인, 아데노신, 베타글루칸, 트레할로스, 감초추출물, 비타민E, 시어버터, 스쿠알렌, 아미노산 성분, 타우린 화장품 |
+| 컨셉·클레임 | 14 | 비건, 저자극, 클린뷰티, 무향료, 크루얼티프리, 더마코스메틱, 논코메도제닉, 자연유래 성분, 친환경 화장품, 피부과테스트, 보습력, 올인원 스킨케어, 알러지테스트, 시카케어 |
+| 제형 | 15 | 앰플, 세럼, 스킨에센스, 수분크림, 로션, 스킨토너, 페이셜미스트, 페이스오일, 립밤, 시트팩, 마스크팩, 토너패드, 수분젤, 쿠션파운데이션, 선스틱 |
+| 효능 | 22 | 모공, 각질, 리프팅, 피부탄력, 주름개선, 미백, 톤업, 피부진정, 보습, 피부트러블, 피지조절, 안면홍조, 피부재생, 브라이트닝, 수분공급, 피부장벽, 모공수렴, 영양공급, 항산화, 피부광채, 잡티, 쿨링 효과 |
+
+후보 78개 중 "Non-합성향료"·"백탁없음"(둘 다 컨셉·클레임 카테고리)은 네이버 데이터랩 자체에 검색 데이터가 없어 분석에서 제외했다(§3.1·4.0).
+
+### 부록 B. "결합형 → 원형" 키워드 매핑표 (§4.3 완화 매칭용)
+
+동음이의어 충돌을 피하기 위해 결합형으로 표기한 키워드와, 실제 제품명에서 쓰이는 더 짧은 원형의 대응관계다. 성분 카테고리는 전부 화장품 전용어라 이 문제가 없어 제외했다.
+
+| 결합형 | 원형 | 결합형 | 원형 |
+|---|---|---|---|
+| 스킨에센스 | 에센스 | 피부탄력 | 탄력 |
+| 쿠션파운데이션 | 쿠션 | 피부진정 | 진정 |
+| 페이셜미스트 | 미스트 | 피부트러블 | 트러블 |
+| 페이스오일 | 오일 | 피지조절 | 피지 |
+| 립밤 | 밤 | 안면홍조 | 홍조 |
+| 토너패드 | 패드 | 피부재생 | 재생 |
+| 수분젤 | 젤 | 수분공급 | 수분 |
+| 스킨토너 | 토너 | 친환경 화장품 | 친환경 |
+| 수분크림 | 크림 | | |
+| 선스틱 | 스틱 | | |
+
+### 부록 C. 알고리즘 × feature 조합 전수 비교 결과 (25개 조합, §3.4·4.1)
+
+`base` = signal(growth rate)+volatility+seasonal_deviation, `+momentum`/`+rank`/`+holiday`는 base에 해당 feature 1개씩 추가, `+all_extra`는 momentum+rank_in_category+days_to_holiday 3개 모두 추가. AUC는 4개 카테고리 평균이며, 성분/제형/컨셉·클레임/효능 개별 수치는 아래 표의 각 열에 그대로 대응한다.
+
+| feature 조합 | 모델 | 성분 | 제형 | 컨셉·클레임 | 효능 | 평균 AUC |
+|---|---|---|---|---|---|---|
+| +all_extra | CatBoost | 0.729 | 0.796 | 0.825 | 0.879 | **0.8075** |
+| +holiday | CatBoost | 0.726 | 0.793 | 0.823 | 0.878 | 0.8049 |
+| +all_extra | XGBoost | 0.716 | 0.782 | 0.826 | 0.877 | 0.8002 |
+| +holiday | XGBoost | 0.714 | 0.784 | 0.826 | 0.875 | 0.7998 |
+| +all_extra | LightGBM | 0.713 | 0.780 | 0.824 | 0.877 | 0.7985 |
+| +holiday | LightGBM | 0.708 | 0.779 | 0.820 | 0.875 | 0.7956 |
+| +holiday | RandomForest | 0.712 | 0.789 | 0.807 | 0.874 | 0.7955 |
+| +all_extra | RandomForest | 0.711 | 0.784 | 0.806 | 0.875 | 0.7943 |
+| +rank | CatBoost | 0.716 | 0.757 | 0.828 | 0.866 | 0.7919 |
+| base | CatBoost | 0.713 | 0.757 | 0.829 | 0.868 | 0.7914 |
+| +rank | XGBoost | 0.714 | 0.755 | 0.827 | 0.865 | 0.7905 |
+| +momentum | CatBoost | 0.711 | 0.757 | 0.827 | 0.867 | 0.7904 |
+| +rank | LightGBM | 0.707 | 0.758 | 0.825 | 0.866 | 0.7893 |
+| +momentum | XGBoost | 0.701 | 0.752 | 0.828 | 0.871 | 0.7882 |
+| base | LightGBM | 0.700 | 0.758 | 0.826 | 0.864 | 0.7869 |
+| base | XGBoost | 0.701 | 0.750 | 0.828 | 0.867 | 0.7864 |
+| +momentum | LightGBM | 0.699 | 0.752 | 0.824 | 0.866 | 0.7852 |
+| +momentum | RandomForest | 0.692 | 0.758 | 0.813 | 0.867 | 0.7825 |
+| +rank | RandomForest | 0.690 | 0.762 | 0.811 | 0.864 | 0.7815 |
+| base | RandomForest | 0.694 | 0.758 | 0.811 | 0.861 | 0.7809 |
+| base | 로지스틱회귀 | 0.631 | 0.731 | 0.743 | 0.747 | 0.7131 |
+| +momentum | 로지스틱회귀 | 0.629 | 0.730 | 0.741 | 0.742 | 0.7107 |
+| +rank | 로지스틱회귀 | 0.610 | 0.648 | 0.718 | 0.733 | 0.6773 |
+| +holiday | 로지스틱회귀 | 0.622 | 0.702 | 0.660 | 0.655 | 0.6595 |
+| +all_extra | 로지스틱회귀 | 0.618 | 0.674 | 0.655 | 0.668 | 0.6537 |
+
+AUC만 기준으로는 CatBoost+all_extra(0.8075)가 최고였으나, §4.1에서 설명한 대로 days_to_holiday가 within-week 판별력이 없어 Precision@K를 오히려 악화시켰으므로 최종 모델은 +momentum+rank(days_to_holiday 제외, 평균 AUC 0.7936)를 채택했다.
+
+### 부록 D. Breakout 라벨링 구현 코드 (§3.2)
+
+```python
+import pandas as pd
+
+df = pd.read_csv("naver_trends.csv")
+df["period"] = pd.to_datetime(df["period"])
+
+# 완전히 끝나지 않은 마지막 주 제외 (as_of = 데이터 수집 시점)
+period_end = df["period"] + pd.Timedelta(days=6)
+df = df[period_end < as_of].copy()
+
+# 전주 대비 증가율
+df = df.sort_values(["keyword", "period"])
+df["growth_rate"] = df.groupby("keyword")["ratio"].pct_change() * 100
+
+# 카테고리별 Tukey IQR 임계치 적용
+grouped = df.groupby("category")["growth_rate"]
+q1 = grouped.transform(lambda s: s.quantile(0.25))
+q3 = grouped.transform(lambda s: s.quantile(0.75))
+df["breakout_threshold"] = q3 + 1.5 * (q3 - q1)
+df["is_breakout"] = df["growth_rate"] > df["breakout_threshold"]
+```
 
 ---
 
